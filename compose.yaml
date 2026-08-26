@@ -1,38 +1,43 @@
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: event-management-app
-    working_dir: /var/www/html
-    volumes:
-      - .:/var/www/html
-    depends_on:
-      - db
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: event-management-app
+        user: "${UID:-1000}:${GID:-1000}"
+        working_dir: /var/www/html
+        environment:
+            HOME: /tmp
+        volumes:
+            - .:/var/www/html
+        ports:
+            - "8080:8080"
+        depends_on:
+            - db
 
-  web:
-    image: nginx:alpine
-    container_name: event-management-web
-    ports:
-      - "8083:80"
-    volumes:
-      - .:/var/www/html
-      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
-    depends_on:
-      - app
+    web:
+        image: nginx:alpine
+        container_name: event-management-web
+        ports:
+            - "8083:80"
+        volumes:
+            - .:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        depends_on:
+            - app
 
-  db:
-    image: mysql:8.4
-    container_name: event-management-db
-    ports:
-      - "3310:3306"
-    environment:
-      MYSQL_DATABASE: event_management
-      MYSQL_USER: laravel
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: root
-    volumes:
-      - event-management-db-data:/var/lib/mysql
+    db:
+        image: mysql:8.4
+        container_name: event-management-db
+        ports:
+            - "3310:3306"
+        environment:
+            MYSQL_DATABASE: event_management
+            MYSQL_USER: laravel
+            MYSQL_PASSWORD: secret
+            MYSQL_ROOT_PASSWORD: root
+        volumes:
+            - event-management-db-data:/var/lib/mysql
 
 volumes:
-  event-management-db-data:
+    event-management-db-data:
