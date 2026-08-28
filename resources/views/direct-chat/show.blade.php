@@ -225,9 +225,6 @@
             );
 
             channel.listen('.message.sent', (event) => {
-                if (event.user.id === currentUserId) {
-                    return;
-                }
 
                 const messageList = document.getElementById('message-list');
                 const emptyMessage = document.getElementById('empty-message');
