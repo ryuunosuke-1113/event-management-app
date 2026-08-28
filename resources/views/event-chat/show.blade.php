@@ -257,9 +257,13 @@
         });
 
         channel.listen('.message.read-updated', (event) => {
+            console.log('read-updated received:', event);
+
             const readCount = document.getElementById(
                 `read-count-${event.message_id}`
             );
+
+            console.log('read count element:', readCount);
 
             if (readCount) {
                 readCount.textContent = `既読 ${event.read_count}`;
