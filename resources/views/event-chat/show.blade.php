@@ -238,14 +238,21 @@
             messageList.appendChild(wrapper);
             if (event.user.id !== currentUserId) {
                 fetch(`/messages/${event.id}/read`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector(
-                            'meta[name="csrf-token"]'
-                        ).content,
-                        'Accept': 'application/json',
-                    },
-                });
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector(
+                                'meta[name="csrf-token"]'
+                            ).content,
+                            'Accept': 'application/json',
+                        },
+                    })
+                    .then(async (response) => {
+                        console.log('read response status:', response.status);
+                        console.log('read response body:', await response.text());
+                    })
+                    .catch((error) => {
+                        console.error('read request failed:', error);
+                    });
             }
         });
 
