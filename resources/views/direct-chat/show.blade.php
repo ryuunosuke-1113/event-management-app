@@ -99,8 +99,7 @@
         <div class="card">
             <h2>メッセージを送る</h2>
 
-            <form method="POST" action="{{ route('direct-chat.messages.store', $conversation) }}">
-                @csrf
+            <form id="message-form" method="POST" action="{{ route('direct-chat.messages.store', $conversation) }}"> @csrf
 
                 <textarea name="body" rows="4" required style="width: 100%;">{{ old('body') }}</textarea>
 
@@ -121,6 +120,63 @@
             const conversationId = {{ $conversation->id }};
             const currentUserId = {{ auth()->id() }};
             const chatBottom = document.getElementById('chat-bottom');
+
+            const messageForm = document.getElementById('message-form');
+            const messageInput = messageForm?.querySelector('textarea[name="body"]');
+
+            if (messageForm && messageInput) {
+                messageForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+
+                    const body = messageInput.value.trim();
+
+                    if (!body) {
+                        return;
+                    }
+
+                    const submitButton = messageForm.querySelector(
+                        'button[type="submit"]'
+                    );
+
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                    }
+
+                    try {
+                        const response = await fetch(messageForm.action, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector(
+                                    'meta[name="csrf-token"]'
+                                ).content,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                body: body,
+                            }),
+                        });
+
+                        if (!response.ok) {
+                            console.error(
+                                'message send failed:',
+                                response.status,
+                                await response.text()
+                            );
+
+                            return;
+                        }
+
+                        messageInput.value = '';
+                    } catch (error) {
+                        console.error('message send failed:', error);
+                    } finally {
+                        if (submitButton) {
+                            submitButton.disabled = false;
+                        }
+                    }
+                });
+            }
 
             if (chatBottom) {
                 chatBottom.scrollIntoView();

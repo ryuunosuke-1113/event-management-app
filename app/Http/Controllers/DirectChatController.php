@@ -144,6 +144,13 @@ class DirectChatController extends Controller
 
         MessageSent::dispatch($message);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message_id' => $message->id,
+            ]);
+        }
+
         return redirect()
             ->route('direct-chat.show', $conversation);
     }
