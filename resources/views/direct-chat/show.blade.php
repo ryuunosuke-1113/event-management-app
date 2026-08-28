@@ -225,18 +225,58 @@
             );
 
             channel.listen('.message.sent', (event) => {
-                const isOwnMessage =
-                    Number(event.user.id) === Number(currentUserId);
 
                 const messageList = document.getElementById('message-list');
                 const emptyMessage = document.getElementById('empty-message');
 
-                // 途中のメッセージDOM作成処理はそのまま
+                if (!messageList) {
+                    return;
+                }
+
+                if (emptyMessage) {
+                    emptyMessage.remove();
+                }
+
+                const wrapper = document.createElement('div');
+
+                wrapper.style.padding = '12px';
+                wrapper.style.marginBottom = '12px';
+                wrapper.style.borderRadius = '10px';
+                wrapper.style.background = '#f8fafc';
+
+                const header = document.createElement('div');
+
+                header.style.display = 'flex';
+                header.style.alignItems = 'center';
+                header.style.gap = '10px';
+                header.style.marginBottom = '8px';
+
+                if (event.user.photo_url) {
+                    const image = document.createElement('img');
+
+                    image.src = event.user.photo_url;
+                    image.alt = event.user.name;
+
+                    image.style.width = '40px';
+                    image.style.height = '40px';
+                    image.style.objectFit = 'cover';
+                    image.style.borderRadius = '50%';
+
+                    header.appendChild(image);
+                }
+
+                const name = document.createElement('strong');
+                name.textContent = event.user.name;
+
+                header.appendChild(name);
+
+                const body = document.createElement('div');
+                appendMessageBody(body, event.body);
 
                 wrapper.appendChild(header);
                 wrapper.appendChild(body);
 
-                if (isOwnMessage) {
+                if (event.user.id === currentUserId) {
                     const readStatus = document.createElement('div');
 
                     readStatus.id = `read-count-${event.id}`;
@@ -249,8 +289,7 @@
                 }
 
                 messageList.appendChild(wrapper);
-
-                if (!isOwnMessage) {
+                if (event.user.id !== currentUserId) {
                     fetch(`/messages/${event.id}/read`, {
                             method: 'POST',
                             headers: {
@@ -262,10 +301,7 @@
                         })
                         .then(async (response) => {
                             console.log('read response status:', response.status);
-                            console.log(
-                                'read response body:',
-                                await response.text()
-                            );
+                            console.log('read response body:', await response.text());
                         })
                         .catch((error) => {
                             console.error('read request failed:', error);
