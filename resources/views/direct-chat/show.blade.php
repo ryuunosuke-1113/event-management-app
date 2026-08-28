@@ -276,6 +276,18 @@
                 wrapper.appendChild(header);
                 wrapper.appendChild(body);
 
+                if (event.user.id === currentUserId) {
+                    const readStatus = document.createElement('div');
+
+                    readStatus.id = `read-count-${event.id}`;
+                    readStatus.style.marginTop = '6px';
+                    readStatus.style.fontSize = '0.8rem';
+                    readStatus.style.color = '#6b7280';
+                    readStatus.style.textAlign = 'right';
+
+                    wrapper.appendChild(readStatus);
+                }
+
                 messageList.appendChild(wrapper);
                 if (event.user.id !== currentUserId) {
                     fetch(`/messages/${event.id}/read`, {
