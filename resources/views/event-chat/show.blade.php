@@ -104,8 +104,7 @@
     <div class="card">
         <h2>メッセージを送る</h2>
 
-        <form method="POST" action="{{ route('event-chat.messages.store', $event) }}">
-            @csrf
+        <form id="message-form" method="POST" action="{{ route('event-chat.messages.store', $event) }}"> @csrf
 
             <div class="form-group">
                 <label for="body">
@@ -134,6 +133,62 @@
     <script type="module">
         const conversationId = {{ $conversation->id }};
         const currentUserId = {{ auth()->id() }};
+        const messageForm = document.getElementById('message-form');
+        const messageInput = document.getElementById('body');
+
+        if (messageForm && messageInput) {
+            messageForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const body = messageInput.value.trim();
+
+                if (!body) {
+                    return;
+                }
+
+                const submitButton = messageForm.querySelector(
+                    'button[type="submit"]'
+                );
+
+                if (submitButton) {
+                    submitButton.disabled = true;
+                }
+
+                try {
+                    const response = await fetch(messageForm.action, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector(
+                                'meta[name="csrf-token"]'
+                            ).content,
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            body: body,
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        console.error(
+                            'message send failed:',
+                            response.status,
+                            await response.text()
+                        );
+
+                        return;
+                    }
+
+                    messageInput.value = '';
+                } catch (error) {
+                    console.error('message send failed:', error);
+                } finally {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                    }
+                }
+            });
+        }
         const chatBottom = document.getElementById('chat-bottom');
 
         if (chatBottom) {

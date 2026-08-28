@@ -83,6 +83,13 @@ class EventChatController extends Controller
 
         MessageSent::dispatch($message);
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message_id' => $message->id,
+            ]);
+        }
+
         return redirect()
             ->route('event-chat.show', $event)
             ->with('success', 'メッセージを送信しました。');
