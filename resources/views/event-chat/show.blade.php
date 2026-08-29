@@ -314,10 +314,6 @@
                             'Accept': 'application/json',
                         },
                     })
-                    .then(async (response) => {
-                        console.log('read response status:', response.status);
-                        console.log('read response body:', await response.text());
-                    })
                     .catch((error) => {
                         console.error('read request failed:', error);
                     });
@@ -325,13 +321,11 @@
         });
 
         channel.listen('.message.read-updated', (event) => {
-            console.log('read-updated received:', event);
 
             const readCount = document.getElementById(
                 `read-count-${event.message_id}`
             );
 
-            console.log('read count element:', readCount);
 
             if (readCount) {
                 readCount.textContent = `既読 ${event.read_count}`;

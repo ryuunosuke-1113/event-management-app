@@ -45,10 +45,6 @@ class EventChatController extends Controller
             );
 
             if ($read->wasRecentlyCreated) {
-                \Log::info('Dispatching MessageReadUpdated', [
-                    'message_id' => $message->id,
-                    'conversation_id' => $message->conversation_id,
-                ]);
 
                 MessageReadUpdated::dispatch($message);
             }
