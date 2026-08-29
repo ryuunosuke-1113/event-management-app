@@ -290,6 +290,19 @@
             wrapper.appendChild(header);
             wrapper.appendChild(body);
 
+            if (event.user.id === currentUserId) {
+                const readCount = document.createElement('div');
+
+                readCount.id = `read-count-${event.id}`;
+                readCount.style.marginTop = '6px';
+                readCount.style.fontSize = '0.8rem';
+                readCount.style.color = '#6b7280';
+                readCount.style.textAlign = 'right';
+                readCount.textContent = '既読 0';
+
+                wrapper.appendChild(readCount);
+            }
+
             messageList.appendChild(wrapper);
             if (event.user.id !== currentUserId) {
                 fetch(`/messages/${event.id}/read`, {
