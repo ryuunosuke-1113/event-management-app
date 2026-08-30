@@ -223,14 +223,15 @@
 
     </div>
 
-    <form method="POST" action="{{ route('admin.events.destroy', $event) }}"
-        onsubmit="return confirm('本当にこのイベントを削除しますか？')">
-        @csrf
-        @method('DELETE')
+    @if ($event->status === 'draft' && !$event->participants()->exists())
+        <form method="POST" action="{{ route('admin.events.destroy', $event) }}"
+            onsubmit="return confirm('本当にこのイベントを削除しますか？')">
+            @csrf
+            @method('DELETE')
 
-        <x-button type="submit" variant="danger">
-            イベントを削除する
-        </x-button>
-    </form>
-
+            <x-button type="submit" variant="danger">
+                イベントを削除する
+            </x-button>
+        </form>
+    @endif
 @endsection

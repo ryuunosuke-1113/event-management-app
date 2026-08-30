@@ -190,6 +190,17 @@ class EventController extends Controller
     }
     public function destroy(Event $event)
     {
+        $hasParticipants = $event->participants()->exists();
+
+        if ($event->status !== 'draft' || $hasParticipants) {
+            return redirect()
+                ->route('admin.events.show', $event)
+                ->with(
+                    'error',
+                    'イベントは、下書き状態かつ参加申込がない場合のみ削除できます。'
+                );
+        }
+
         $event->delete();
 
         return redirect()
