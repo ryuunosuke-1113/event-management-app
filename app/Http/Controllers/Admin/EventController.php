@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Event;
 use Illuminate\Http\Request;
-
+use Stripe\StripeClient;
+use Throwable;
 class EventController extends Controller
 {
     public function index()
@@ -77,13 +78,116 @@ class EventController extends Controller
             'cancel_policy' => ['nullable', 'string'],
         ]);
 
+        // 一度中止したイベントを再公開しない
+        if (
+            $event->status === 'cancelled'
+            && $validated['status'] !== 'cancelled'
+        ) {
+            return back()
+                ->withInput()
+                ->with('error', '中止済みのイベントを再公開することはできません。');
+        }
+
+        $isBeingCancelled =
+            $event->status !== 'cancelled'
+            && $validated['status'] === 'cancelled';
+
+        if ($isBeingCancelled) {
+            $event->load([
+                'participants.payment',
+            ]);
+
+            $stripe = new StripeClient(
+                config('services.stripe.secret')
+            );
+
+            /*
+             * まず、参加確定・支払い済みの人を全額返金する
+             */
+            foreach ($event->participants as $participant) {
+                $payment = $participant->payment;
+
+                if (
+                    $participant->status !== 'confirmed'
+                    || !$payment
+                    || $payment->status !== 'paid'
+                ) {
+                    continue;
+                }
+
+                if (!$payment->stripe_payment_intent_id) {
+                    return back()
+                        ->withInput()
+                        ->with(
+                            'error',
+                            "{$participant->user_id}番の参加者の決済情報が見つからないため、中止処理を完了できませんでした。"
+                        );
+                }
+
+                try {
+                    // amountを指定しないので全額返金
+                    $stripe->refunds->create([
+                        'payment_intent' => $payment->stripe_payment_intent_id,
+                    ]);
+                } catch (Throwable $e) {
+                    report($e);
+
+                    return back()
+                        ->withInput()
+                        ->with(
+                            'error',
+                            'Stripeの返金処理に失敗しました。イベントはまだ中止されていません。'
+                        );
+                }
+
+                $payment->update([
+                    'status' => 'refunded',
+                    'refunded_at' => now(),
+                ]);
+
+                $participant->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                    'payment_expires_at' => null,
+                ]);
+            }
+
+            /*
+             * まだ決済していない参加者もキャンセルする
+             */
+            foreach ($event->participants as $participant) {
+                if ($participant->status !== 'pending_payment') {
+                    continue;
+                }
+
+                if (
+                    $participant->payment
+                    && $participant->payment->status === 'pending'
+                ) {
+                    $participant->payment->update([
+                        'status' => 'failed',
+                    ]);
+                }
+
+                $participant->update([
+                    'status' => 'cancelled',
+                    'cancelled_at' => now(),
+                    'payment_expires_at' => null,
+                ]);
+            }
+        }
+
         $event->update($validated);
 
         return redirect()
             ->route('admin.events.show', $event)
-            ->with('success', 'イベントを更新しました。');
+            ->with(
+                'success',
+                $isBeingCancelled
+                ? 'イベントを中止し、支払い済みの参加者へ全額返金しました。'
+                : 'イベントを更新しました。'
+            );
     }
-
     public function destroy(Event $event)
     {
         $event->delete();
