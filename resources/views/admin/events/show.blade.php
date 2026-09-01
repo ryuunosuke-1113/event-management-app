@@ -95,9 +95,9 @@
                         <tr>
                             <th>ID</th>
                             <th>名前</th>
-                            <th>メール</th>
                             <th>参加状態</th>
                             <th>決済状態</th>
+                            <th>返金状態</th>
                             <th>申込日時</th>
                             <th>支払い期限</th>
                             <th>当日参加確認</th>
@@ -106,17 +106,12 @@
                     </thead>
 
                     <tbody>
-
                         @foreach ($event->participants as $participant)
                             <tr>
                                 <td>{{ $participant->user_id }}</td>
 
                                 <td>
                                     {{ $participant->user->name }}
-                                </td>
-
-                                <td>
-                                    {{ $participant->user->email }}
                                 </td>
 
                                 <td>
@@ -131,6 +126,39 @@
                                     @endif
                                 </td>
 
+                                {{-- 返金状態 --}}
+                                <td>
+                                    @if (!$participant->payment)
+                                        -
+                                    @elseif ($participant->payment->refund_status === 'pending')
+                                        <div>
+                                            <strong>返金待ち</strong>
+                                        </div>
+
+                                        <div style="margin-top: 4px;">
+                                            {{ number_format($participant->payment->refund_due_amount ?? 0) }}円
+                                        </div>
+                                    @elseif ($participant->payment->refund_status === 'completed')
+                                        <div>
+                                            <strong>返金済み</strong>
+                                        </div>
+
+                                        <div style="margin-top: 4px;">
+                                            {{ number_format($participant->payment->refunded_amount ?? 0) }}円
+                                        </div>
+
+                                        @if ($participant->payment->refunded_at)
+                                            <div style="margin-top: 4px; font-size: 12px;">
+                                                {{ $participant->payment->refunded_at->format('Y/m/d H:i') }}
+                                            </div>
+                                        @endif
+                                    @elseif ($participant->payment->refund_status === 'not_required')
+                                        返金不要
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+
                                 <td>
                                     {{ $participant->created_at->format('Y/m/d H:i') }}
                                 </td>
@@ -142,6 +170,7 @@
                                         -
                                     @endif
                                 </td>
+
                                 <td>
                                     @if ($participant->status === 'confirmed')
                                         <form method="POST"
@@ -182,41 +211,27 @@
                                             </x-button>
                                         </form>
                                     @elseif (
-                                        $participant->status === 'cancelled' &&
-                                            $participant->payment &&
+                                        $participant->payment &&
                                             $participant->payment->payment_method === 'online' &&
-                                            $participant->payment->status === 'paid' &&
-                                            is_null($participant->payment->refunded_at))
-                                        @php
-                                            $refundAmount = $event->refundAmountAt(
-                                                $participant->cancelled_at,
-                                                $participant->payment->amount,
-                                            );
-                                        @endphp
+                                            $participant->payment->refund_status === 'pending')
+                                        <form method="POST"
+                                            action="{{ route('admin.event-participants.refund-complete', $participant) }}"
+                                            onsubmit="return confirm('実際の返金対応は完了していますか？')">
+                                            @csrf
+                                            @method('PATCH')
 
-                                        @if ($refundAmount > 0)
-                                            <div>
-                                                <strong>
-                                                    返金対応が必要：
-                                                    {{ number_format($refundAmount) }}円
-                                                </strong>
-                                            </div>
-                                        @else
-                                            <div>
-                                                返金対応は不要です。
-                                            </div>
-                                        @endif
+                                            <x-button type="submit" variant="primary">
+                                                返金済みにする
+                                            </x-button>
+                                        </form>
                                     @else
                                         -
                                     @endif
                                 </td>
-
                             </tr>
                         @endforeach
-
                     </tbody>
                 </table>
-
             </div>
 
         @endif

@@ -93,90 +93,116 @@ class EventController extends Controller
             && $validated['status'] === 'cancelled';
 
         if ($isBeingCancelled) {
-            $event->load([
-                'participants.payment',
-            ]);
+            $event->load('participants.payment');
 
             $stripe = new StripeClient(
                 config('services.stripe.secret')
             );
 
-            /*
-             * まず、参加確定・支払い済みの人を全額返金する
-             */
             foreach ($event->participants as $participant) {
                 $payment = $participant->payment;
 
+                /*
+                |--------------------------------------------------------------------------
+                | 参加確定 + 支払い済み
+                |--------------------------------------------------------------------------
+                */
                 if (
-                    $participant->status !== 'confirmed'
-                    || !$payment
-                    || $payment->status !== 'paid'
+                    $participant->status === 'confirmed'
+                    && $payment
+                    && $payment->status === 'paid'
                 ) {
-                    continue;
-                }
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Stripe決済
+                    |--------------------------------------------------------------------------
+                    */
+                    if ($payment->payment_method === 'stripe') {
+                        if (!$payment->stripe_payment_intent_id) {
+                            return back()
+                                ->withInput()
+                                ->with(
+                                    'error',
+                                    'Stripeの決済情報が見つからない参加者がいるため、イベント中止を完了できませんでした。'
+                                );
+                        }
 
-                if (!$payment->stripe_payment_intent_id) {
-                    return back()
-                        ->withInput()
-                        ->with(
-                            'error',
-                            "{$participant->user_id}番の参加者の決済情報が見つからないため、中止処理を完了できませんでした。"
-                        );
-                }
+                        try {
+                            $stripe->refunds->create([
+                                'payment_intent' => $payment->stripe_payment_intent_id,
+                            ]);
+                        } catch (Throwable $e) {
+                            report($e);
 
-                try {
-                    // amountを指定しないので全額返金
-                    $stripe->refunds->create([
-                        'payment_intent' => $payment->stripe_payment_intent_id,
+                            return back()
+                                ->withInput()
+                                ->with(
+                                    'error',
+                                    'Stripeの返金処理に失敗しました。イベントはまだ中止されていません。'
+                                );
+                        }
+
+                        $payment->update([
+                            'status' => 'refunded',
+                            'refund_status' => 'completed',
+                            'refund_due_amount' => $payment->amount,
+                            'refunded_amount' => $payment->amount,
+                            'refunded_at' => now(),
+                        ]);
+                    }
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | その他オンライン決済
+                    |--------------------------------------------------------------------------
+                    |
+                    | Stripeでは返金できないため、
+                    | 管理者による手動返金待ちにする。
+                    |--------------------------------------------------------------------------
+                    */ elseif ($payment->payment_method === 'online') {
+                        $payment->update([
+                            'refund_status' => 'pending',
+                            'refund_due_amount' => $payment->amount,
+                            'refunded_amount' => null,
+                            'refunded_at' => null,
+                        ]);
+                    }
+
+                    $participant->update([
+                        'status' => 'cancelled',
+                        'cancelled_at' => now(),
+                        'payment_expires_at' => null,
                     ]);
-                } catch (Throwable $e) {
-                    report($e);
 
-                    return back()
-                        ->withInput()
-                        ->with(
-                            'error',
-                            'Stripeの返金処理に失敗しました。イベントはまだ中止されていません。'
-                        );
-                }
-
-                $payment->update([
-                    'status' => 'refunded',
-                    'refunded_at' => now(),
-                ]);
-
-                $participant->update([
-                    'status' => 'cancelled',
-                    'cancelled_at' => now(),
-                    'payment_expires_at' => null,
-                ]);
-            }
-
-            /*
-             * まだ決済していない参加者もキャンセルする
-             */
-            foreach ($event->participants as $participant) {
-                if ($participant->status !== 'pending_payment') {
                     continue;
                 }
 
+                /*
+                |--------------------------------------------------------------------------
+                | 決済待ち
+                |--------------------------------------------------------------------------
+                */
                 if (
-                    $participant->payment
-                    && $participant->payment->status === 'pending'
+                    $participant->status === 'pending_payment'
+                    && $payment
+                    && $payment->status === 'pending'
                 ) {
-                    $participant->payment->update([
+                    $payment->update([
                         'status' => 'failed',
+                        'refund_status' => 'not_required',
+                        'refund_due_amount' => 0,
                     ]);
                 }
 
-                $participant->update([
-                    'status' => 'cancelled',
-                    'cancelled_at' => now(),
-                    'payment_expires_at' => null,
-                ]);
+                if ($participant->status !== 'cancelled') {
+                    $participant->update([
+                        'status' => 'cancelled',
+                        'cancelled_at' => now(),
+                        'payment_expires_at' => null,
+                    ]);
+                }
             }
         }
-
         $event->update($validated);
 
         return redirect()

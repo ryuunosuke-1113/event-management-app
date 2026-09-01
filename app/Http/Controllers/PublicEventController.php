@@ -17,8 +17,22 @@ class PublicEventController extends Controller
 
     public function show(Event $event)
     {
-        abort_unless($event->status === 'published', 404);
+        $canView = $event->status === 'published';
 
+        if (!$canView && auth()->check()) {
+            $hasParticipation = $event->participants()
+                ->where('user_id', auth()->id())
+                ->exists();
+
+            $canView = $hasParticipation
+                && in_array(
+                    $event->status,
+                    ['closed', 'finished', 'cancelled'],
+                    true
+                );
+        }
+
+        abort_unless($canView, 404);
         $event->load([
             'participants' => function ($query) {
                 $query->where('status', 'confirmed');

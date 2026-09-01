@@ -17,6 +17,8 @@ class Payment extends Model
         'paid_at',
         'refunded_at',
         'refunded_amount',
+        'refund_status',
+        'refund_due_amount',
     ];
     protected $casts = [
         'paid_at' => 'datetime',
@@ -56,6 +58,15 @@ class Payment extends Model
             'failed' => 'Stripe決済失敗',
             'refunded' => '返金済み',
             default => '不明',
+        };
+    }
+    public function getRefundStatusLabelAttribute(): string
+    {
+        return match ($this->refund_status) {
+            'pending' => '返金待ち',
+            'completed' => '返金済み',
+            'not_required' => '返金不要',
+            default => '－',
         };
     }
 }

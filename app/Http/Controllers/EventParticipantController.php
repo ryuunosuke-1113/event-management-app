@@ -13,10 +13,65 @@ class EventParticipantController extends Controller
     {
         $participants = EventParticipant::with(['event', 'payment'])
             ->where('user_id', $request->user()->id)
-            ->latest()
             ->get();
 
-        return view('event-participants.index', compact('participants'));
+        /*
+         * これから参加するイベント
+         *
+         * 参加者自身のキャンセル・期限切れ等で
+         * participant.status = cancelled のものは表示しない。
+         */
+        $upcomingParticipants = $participants
+            ->filter(function ($participant) {
+                return $participant->status !== 'cancelled'
+                    && !in_array(
+                        $participant->event->status,
+                        ['finished', 'cancelled'],
+                        true
+                    );
+            })
+            ->sortBy(function ($participant) {
+                return $participant->event->event_date;
+            })
+            ->values();
+
+        /*
+         * 開催終了・主催者都合で中止になったイベント
+         *
+         * event.status が cancelled なら、
+         * participant.status が cancelled でも表示する。
+         */
+        $pastParticipants = $participants
+            ->filter(function ($participant) {
+                return in_array(
+                    $participant->event->status,
+                    ['finished', 'cancelled'],
+                    true
+                );
+            })
+            ->sortByDesc(function ($participant) {
+                return $participant->event->event_date;
+            })
+            ->values();
+
+        return view('event-participants.index', compact(
+            'upcomingParticipants',
+            'pastParticipants'
+        ));
+    }
+    public function cancelled(Request $request)
+    {
+        $participants = EventParticipant::with(['event', 'payment'])
+            ->where('user_id', $request->user()->id)
+            ->where('status', 'cancelled')
+            ->where('cancellation_reason', 'user_cancelled')
+            ->orderByDesc('cancelled_at')
+            ->get();
+
+        return view(
+            'event-participants.cancelled',
+            compact('participants')
+        );
     }
     public function store(Request $request, Event $event)
     {
@@ -152,13 +207,30 @@ class EventParticipantController extends Controller
 
             /*
             |--------------------------------------------------------------------------
-            | Stripe決済
+            | 返金なし
             |--------------------------------------------------------------------------
             */
-            if (
-                $payment->payment_method === 'stripe'
-                && $refundRate > 0
-            ) {
+            if ($refundAmount <= 0) {
+                $payment->update([
+                    'refund_status' => 'not_required',
+                    'refund_due_amount' => 0,
+                    'refunded_amount' => null,
+                    'refunded_at' => null,
+                ]);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Stripe決済
+            |--------------------------------------------------------------------------
+            */ elseif ($payment->payment_method === 'stripe') {
+                if (!$payment->stripe_payment_intent_id) {
+                    return back()->with(
+                        'error',
+                        'Stripeの決済情報が見つからないため、キャンセル処理を完了できませんでした。'
+                    );
+                }
+
                 $stripe = new StripeClient(
                     config('services.stripe.secret')
                 );
@@ -170,8 +242,10 @@ class EventParticipantController extends Controller
 
                 $payment->update([
                     'status' => 'refunded',
-                    'refunded_at' => $cancelledAt,
+                    'refund_status' => 'completed',
+                    'refund_due_amount' => $refundAmount,
                     'refunded_amount' => $refundAmount,
+                    'refunded_at' => $cancelledAt,
                 ]);
             }
 
@@ -180,21 +254,23 @@ class EventParticipantController extends Controller
             | その他オンライン決済
             |--------------------------------------------------------------------------
             |
-            | ここでは自動返金しない。
-            | 管理者画面で必要返金額を表示し、
-            | 実際に返金したあと「返金対応完了」にする。
-            |
-            */
-            if ($payment->payment_method === 'online') {
-                // この時点ではPaymentを変更しない
+            | 自動返金はできないため、
+            | 管理者が返金するまで「返金待ち」とする。
+            |--------------------------------------------------------------------------
+            */ elseif ($payment->payment_method === 'online') {
+                $payment->update([
+                    'refund_status' => 'pending',
+                    'refund_due_amount' => $refundAmount,
+                    'refunded_amount' => null,
+                    'refunded_at' => null,
+                ]);
             }
         }
-
         $eventParticipant->update([
             'status' => 'cancelled',
             'cancelled_at' => $cancelledAt,
+            'cancellation_reason' => 'user_cancelled',
         ]);
-
         return redirect()
             ->route('event-participants.index')
             ->with('success', '参加申し込みをキャンセルしました。');

@@ -150,6 +150,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/my-event-participants', [EventParticipantController::class, 'index'])
         ->name('event-participants.index');
+    Route::get(
+        '/my-event-participants/cancelled',
+        [EventParticipantController::class, 'cancelled']
+    )->name('event-participants.cancelled');
 
     Route::post(
         '/events/{event}/participants',
@@ -297,4 +301,8 @@ Route::middleware(['auth', 'admin'])
             '/event-participants/{eventParticipant}/attendance',
             [AdminEventParticipantController::class, 'updateAttendance']
         )->name('event-participants.attendance');
+        Route::patch(
+            '/event-participants/{eventParticipant}/refund-complete',
+            [AdminEventParticipantController::class, 'completeRefund']
+        )->name('event-participants.refund-complete');
     });

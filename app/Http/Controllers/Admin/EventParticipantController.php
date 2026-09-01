@@ -163,4 +163,43 @@ class EventParticipantController extends Controller
                 : '参加確認を解除しました。'
             );
     }
+    public function completeRefund(EventParticipant $eventParticipant): RedirectResponse
+    {
+        $eventParticipant->load('payment');
+
+        $payment = $eventParticipant->payment;
+
+        if (!$payment) {
+            return back()
+                ->with('error', '決済情報が見つかりません。');
+        }
+
+        if ($payment->payment_method !== 'online') {
+            return back()
+                ->with('error', 'この操作はその他オンライン決済にのみ使用できます。');
+        }
+
+        if ($payment->refund_status !== 'pending') {
+            return back()
+                ->with('error', 'この決済は返金待ち状態ではありません。');
+        }
+
+        if (
+            !$payment->refund_due_amount
+            || $payment->refund_due_amount <= 0
+        ) {
+            return back()
+                ->with('error', '返金額が設定されていません。');
+        }
+
+        $payment->update([
+            'status' => 'refunded',
+            'refund_status' => 'completed',
+            'refunded_amount' => $payment->refund_due_amount,
+            'refunded_at' => now(),
+        ]);
+
+        return back()
+            ->with('success', '返金対応を完了として記録しました。');
+    }
 }

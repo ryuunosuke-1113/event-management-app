@@ -6,11 +6,19 @@
 
     <h1>自分の参加予定</h1>
 
-    @if ($participants->isEmpty())
+    <div style="margin-bottom: 24px;">
+        <x-link-button href="{{ route('event-participants.cancelled') }}" variant="secondary">
+            キャンセルしたイベントを見る
+        </x-link-button>
+    </div>
 
-        <p>現在、申し込んでいるイベントはありません。</p>
+    {{-- これから参加するイベント --}}
+    <h2 style="margin-top: 24px;">これから参加するイベント</h2>
+
+    @if ($upcomingParticipants->isEmpty())
+        <p>これから参加するイベントはありません。</p>
     @else
-        @foreach ($participants as $participant)
+        @foreach ($upcomingParticipants as $participant)
             <div class="card">
 
                 <h2>
@@ -31,9 +39,9 @@
 
                 <p>
                     参加状態：
-
                     <x-status-badge :status="$participant->status" :label="$participant->status_label" />
                 </p>
+
                 @if ($participant->status === 'pending_payment' && $participant->payment_expires_at)
                     <p>
                         支払い期限：
@@ -50,14 +58,15 @@
                         <x-status-badge status="none" label="決済情報なし" />
                     @endif
                 </p>
+
                 @if ($participant->cancellation_reason === 'capacity_reached_after_payment')
                     <div
                         style="
-        margin-top: 12px;
-        padding: 12px;
-        border-radius: 8px;
-        background: #fff3cd;
-    ">
+                            margin-top: 12px;
+                            padding: 12px;
+                            border-radius: 8px;
+                            background: #fff3cd;
+                        ">
                         <strong>定員到達によるキャンセル</strong>
 
                         <p style="margin: 8px 0 0;">
@@ -70,6 +79,7 @@
                         </p>
                     </div>
                 @endif
+
                 @if ($participant->status === 'pending_payment' && $participant->payment?->status === 'pending')
                     <form method="POST" action="{{ route('checkout.store', $participant) }}">
                         @csrf
@@ -85,6 +95,7 @@
                         キャンセル
                     </x-link-button>
                 @endif
+
                 <p>
                     参加費：
                     {{ number_format($participant->event->price) }}円
@@ -101,7 +112,61 @@
 
             </div>
         @endforeach
+    @endif
 
+
+    {{-- 終了・中止したイベント --}}
+    <h2 style="margin-top: 40px;">終了・中止したイベント</h2>
+
+    @if ($pastParticipants->isEmpty())
+        <p>終了・中止したイベントはありません。</p>
+    @else
+        @foreach ($pastParticipants as $participant)
+            <div class="card">
+
+                <h2>
+                    <a href="{{ route('events.show', $participant->event) }}">
+                        {{ $participant->event->title }}
+                    </a>
+                </h2>
+
+                <p>
+                    開催日時：
+                    {{ $participant->event->event_date->format('Y/m/d H:i') }}
+                </p>
+
+                <p>
+                    開催場所：
+                    {{ $participant->event->place }}
+                </p>
+
+                <p>
+                    イベント状態：
+                    <x-status-badge :status="$participant->event->status" :label="$participant->event->status_label" />
+                </p>
+
+                <p>
+                    参加状態：
+                    <x-status-badge :status="$participant->status" :label="$participant->status_label" />
+                </p>
+
+                <p>
+                    決済状態：
+
+                    @if ($participant->payment)
+                        <x-status-badge :status="$participant->payment->status" :label="$participant->payment->status_label" />
+                    @else
+                        <x-status-badge status="none" label="決済情報なし" />
+                    @endif
+                </p>
+
+                <p>
+                    参加費：
+                    {{ number_format($participant->event->price) }}円
+                </p>
+
+            </div>
+        @endforeach
     @endif
 
 @endsection
