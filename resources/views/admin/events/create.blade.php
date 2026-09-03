@@ -18,8 +18,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ route('admin.events.store') }}">
-            @csrf
+        <form method="POST" action="{{ route('admin.events.store') }}" enctype="multipart/form-data"> @csrf
 
             <div class="form-group">
                 <label for="title">イベント名</label>
@@ -82,7 +81,41 @@
                     </option>
                 </select>
             </div>
+            <div class="form-group">
+                <label>
+                    イベント画像
+                </label>
 
+                <div id="image-inputs">
+                    <div class="image-input-row">
+                        <input type="file" name="images[]" accept="image/*" multiple>
+                    </div>
+                </div>
+                <div id="image-preview"
+                    style="
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 16px;
+    ">
+                </div>
+
+                <button type="button" id="add-image-input" style="margin-top: 10px;">
+                    ＋ 画像を追加
+                </button>
+
+                <p style="font-size: 0.9rem; color: #6b7280;">
+                    複数枚まとめて選択することも、1枚ずつ追加することもできます。
+                </p>
+
+                @error('images')
+                    <p>{{ $message }}</p>
+                @enderror
+
+                @error('images.*')
+                    <p>{{ $message }}</p>
+                @enderror
+            </div>
             <div class="form-group">
                 <label for="chat_url">参加者用チャットURL</label>
 
@@ -109,5 +142,99 @@
         </form>
 
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('image-inputs');
+            const addButton = document.getElementById('add-image-input');
+            const previewContainer = document.getElementById('image-preview');
 
+            function updatePreview() {
+                previewContainer.innerHTML = '';
+
+                const inputs = container.querySelectorAll('input[type="file"]');
+
+                let imageNumber = 1;
+
+                inputs.forEach((input) => {
+                    Array.from(input.files).forEach((file) => {
+                        if (!file.type.startsWith('image/')) {
+                            return;
+                        }
+
+                        const previewItem = document.createElement('div');
+
+                        previewItem.style.display = 'flex';
+                        previewItem.style.flexDirection = 'column';
+                        previewItem.style.gap = '6px';
+
+                        const img = document.createElement('img');
+
+                        const imageUrl = URL.createObjectURL(file);
+
+                        img.src = imageUrl;
+
+                        img.style.width = '180px';
+                        img.style.height = '125px';
+                        img.style.objectFit = 'cover';
+                        img.style.borderRadius = '8px';
+
+                        img.onload = function() {
+                            URL.revokeObjectURL(imageUrl);
+                        };
+
+                        const label = document.createElement('div');
+
+                        label.textContent =
+                            imageNumber === 1 ?
+                            '1枚目（一覧の代表画像）' :
+                            `${imageNumber}枚目`;
+
+                        label.style.fontSize = '13px';
+                        label.style.fontWeight = 'bold';
+
+                        previewItem.appendChild(img);
+                        previewItem.appendChild(label);
+
+                        previewContainer.appendChild(previewItem);
+
+                        imageNumber++;
+                    });
+                });
+            }
+            container.addEventListener('change', function(event) {
+                if (event.target.matches('input[type="file"]')) {
+                    updatePreview();
+                }
+            });
+
+            addButton.addEventListener('click', function() {
+                const row = document.createElement('div');
+
+                row.className = 'image-input-row';
+                row.style.marginTop = '10px';
+
+                const input = document.createElement('input');
+
+                input.type = 'file';
+                input.name = 'images[]';
+                input.accept = 'image/*';
+
+                const removeButton = document.createElement('button');
+
+                removeButton.type = 'button';
+                removeButton.textContent = '削除';
+                removeButton.style.marginLeft = '8px';
+
+                removeButton.addEventListener('click', function() {
+                    row.remove();
+                    updatePreview();
+                });
+
+                row.appendChild(input);
+                row.appendChild(removeButton);
+
+                container.appendChild(row);
+            });
+        });
+    </script>
 @endsection

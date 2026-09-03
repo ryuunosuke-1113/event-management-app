@@ -10,6 +10,14 @@
 
         <h2>{{ $event->title }}</h2>
 
+        @if ($event->images->isNotEmpty())
+            <div class="event-image-grid">
+                @foreach ($event->images as $image)
+                    <img src="{{ asset('storage/' . $image->image_path) }}" alt="{{ $event->title }}の画像">
+                @endforeach
+            </div>
+        @endif
+
         <p>
             状態：
             <x-status-badge :status="$event->status" :label="$event->status_label" />
@@ -44,18 +52,36 @@
             <p>{{ $event->cancel_policy }}</p>
         @endif
 
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-
-            <x-link-button href="{{ route('admin.events.edit', $event) }}">
+        <div
+            style="
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    ">
+            <x-link-button href="{{ route('admin.events.edit', $event) }}" variant="primary"
+                style="display: inline-flex; align-items: center;">
                 編集する
             </x-link-button>
 
-            <x-link-button href="{{ route('admin.events.index') }}" variant="secondary">
+            @if (is_null($event->archived_at) && in_array($event->status, ['finished', 'cancelled'], true))
+                <form method="POST" action="{{ route('admin.events.archive', $event) }}"
+                    onsubmit="return confirm('このイベントをアーカイブしますか？')" style="display: flex; margin: 0;">
+                    @csrf
+                    @method('PATCH')
+
+                    <x-button type="submit" variant="secondary" style="height: 100%;">
+                        イベントをアーカイブする
+                    </x-button>
+                </form>
+            @endif
+
+            <x-link-button href="{{ route('admin.events.index') }}" variant="secondary"
+                style="display: inline-flex; align-items: center;">
                 イベント管理へ戻る
             </x-link-button>
-
         </div>
-
     </div>
 
     <div class="card">

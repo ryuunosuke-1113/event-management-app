@@ -8,10 +8,10 @@ class PublicEventController extends Controller
 {
     public function index()
     {
-        $events = Event::where('status', 'published')
+        $events = Event::with('images')
+            ->where('status', 'published')
             ->orderBy('event_date')
             ->get();
-
         return view('events.index', compact('events'));
     }
 
@@ -34,6 +34,7 @@ class PublicEventController extends Controller
 
         abort_unless($canView, 404);
         $event->load([
+            'images',
             'participants' => function ($query) {
                 $query->where('status', 'confirmed');
             },

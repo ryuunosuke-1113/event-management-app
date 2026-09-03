@@ -7,15 +7,53 @@ use App\Models\Event;
 use Illuminate\Http\Request;
 use Stripe\StripeClient;
 use Throwable;
+use Illuminate\Support\Facades\Storage;
+use App\Models\EventImage;
 class EventController extends Controller
 {
     public function index()
     {
-        $events = Event::orderBy('event_date')->get();
-
+        $events = Event::with('images')
+            ->whereNull('archived_at')
+            ->orderBy('event_date')
+            ->get();
         return view('admin.events.index', compact('events'));
     }
+    public function archive(Event $event)
+    {
+        if (!in_array($event->status, ['finished', 'cancelled'], true)) {
+            return back()->with(
+                'error',
+                '開催終了または中止したイベントのみアーカイブできます。'
+            );
+        }
 
+        $event->update([
+            'archived_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('admin.events.index')
+            ->with('success', 'イベントをアーカイブしました。');
+    }
+    public function restoreArchive(Event $event)
+    {
+        $event->update([
+            'archived_at' => null,
+        ]);
+
+        return redirect()
+            ->route('admin.events.archived')
+            ->with('success', 'イベントのアーカイブを解除しました。');
+    }
+    public function archived()
+    {
+        $events = Event::whereNotNull('archived_at')
+            ->orderByDesc('event_date')
+            ->get();
+
+        return view('admin.events.archived', compact('events'));
+    }
     public function create()
     {
         return view('admin.events.create');
@@ -33,11 +71,30 @@ class EventController extends Controller
             'status' => ['required', 'in:draft,published,closed,finished,cancelled'],
             'chat_url' => ['nullable', 'url'],
             'cancel_policy' => ['nullable', 'string'],
+            'images' => ['nullable', 'array'],
+            'images.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
 
         ]);
         $validated['organizer_id'] = $request->user()->id;
 
         $event = Event::create($validated);
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $index => $image) {
+                $path = $image->store(
+                    'event-images',
+                    'public'
+                );
+
+                $event->images()->create([
+                    'image_path' => $path,
+                    'sort_order' => $index,
+                ]);
+            }
+        }
 
         $conversation = $event->conversations()->firstOrCreate([
             'type' => 'event',
@@ -53,10 +110,10 @@ class EventController extends Controller
     public function show(Event $event)
     {
         $event->load([
+            'images',
             'participants.user',
             'participants.payment',
         ]);
-
         return view('admin.events.show', compact('event'));
     }
     public function edit(Event $event)
@@ -76,6 +133,12 @@ class EventController extends Controller
             'status' => ['required', 'in:draft,published,closed,finished,cancelled'],
             'chat_url' => ['nullable', 'url'],
             'cancel_policy' => ['nullable', 'string'],
+            'images' => ['nullable', 'array'],
+            'images.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
 
         // 一度中止したイベントを再公開しない
@@ -204,6 +267,21 @@ class EventController extends Controller
             }
         }
         $event->update($validated);
+        if ($request->hasFile('images')) {
+            $nextSortOrder = ($event->images()->max('sort_order') ?? -1) + 1;
+
+            foreach ($request->file('images') as $index => $image) {
+                $path = $image->store(
+                    'event-images',
+                    'public'
+                );
+
+                $event->images()->create([
+                    'image_path' => $path,
+                    'sort_order' => $nextSortOrder + $index,
+                ]);
+            }
+        }
 
         return redirect()
             ->route('admin.events.show', $event)
@@ -232,5 +310,33 @@ class EventController extends Controller
         return redirect()
             ->route('admin.events.index')
             ->with('success', 'イベントを削除しました。');
+    }
+    public function destroyImage(Event $event, EventImage $eventImage)
+    {
+        if ($eventImage->event_id !== $event->id) {
+            abort(404);
+        }
+
+        Storage::disk('public')->delete($eventImage->image_path);
+
+        $eventImage->delete();
+
+        return back()
+            ->with('success', 'イベント画像を削除しました。');
+    }
+    public function makePrimaryImage(Event $event, EventImage $eventImage)
+    {
+        if ($eventImage->event_id !== $event->id) {
+            abort(404);
+        }
+
+        $event->images()->increment('sort_order');
+
+        $eventImage->update([
+            'sort_order' => 0,
+        ]);
+
+        return back()
+            ->with('success', 'この画像を1枚目に設定しました。');
     }
 }

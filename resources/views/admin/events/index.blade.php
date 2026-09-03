@@ -7,6 +7,12 @@
     <h1>イベント管理</h1>
 
     <div style="margin-bottom: 24px;">
+        <x-link-button href="{{ route('admin.events.archived') }}" variant="secondary">
+            アーカイブイベントを見る
+        </x-link-button>
+    </div>
+
+    <div style="margin-bottom: 24px;">
         <x-link-button href="{{ route('admin.events.create') }}">
             新しいイベントを作成
         </x-link-button>
@@ -26,6 +32,14 @@
                         {{ $event->title }}
                     </a>
                 </h2>
+                @if ($event->images->isNotEmpty())
+                    @php
+                        $mainImage = $event->images->first();
+                    @endphp
+
+                    <img src="{{ asset('storage/' . $mainImage->image_path) }}" alt="{{ $event->title }}の画像"
+                        class="event-list-image">
+                @endif
 
                 <p>
                     開催日時：

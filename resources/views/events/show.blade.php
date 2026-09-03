@@ -4,7 +4,13 @@
 
     <div class="card">
         <h1>{{ $event->title }}</h1>
-
+        @if ($event->images->isNotEmpty())
+            <div class="event-image-grid">
+                @foreach ($event->images as $image)
+                    <img src="{{ asset('storage/' . $image->image_path) }}" alt="{{ $event->title }}の画像">
+                @endforeach
+            </div>
+        @endif
         <div style="margin-top: 24px;">
             <p>
                 <strong>開催日時：</strong>

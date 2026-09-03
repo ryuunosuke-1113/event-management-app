@@ -20,6 +20,14 @@
                         {{ $event->title }}
                     </a>
                 </h2>
+                @if ($event->images->isNotEmpty())
+                    @php
+                        $mainImage = $event->images->first();
+                    @endphp
+
+                    <img src="{{ asset('storage/' . $mainImage->image_path) }}" alt="{{ $event->title }}の画像"
+                        class="event-list-image">
+                @endif
 
                 <p>
                     開催日時：

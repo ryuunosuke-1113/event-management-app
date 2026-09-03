@@ -281,6 +281,8 @@ Route::middleware(['auth', 'admin'])
 
         Route::post('/events', [AdminEventController::class, 'store'])
             ->name('events.store');
+        Route::get('/events/archived', [AdminEventController::class, 'archived'])
+            ->name('events.archived');
 
         Route::get('/events/{event}', [AdminEventController::class, 'show'])
             ->name('events.show');
@@ -305,4 +307,21 @@ Route::middleware(['auth', 'admin'])
             '/event-participants/{eventParticipant}/refund-complete',
             [AdminEventParticipantController::class, 'completeRefund']
         )->name('event-participants.refund-complete');
+        Route::patch(
+            '/events/{event}/archive',
+            [AdminEventController::class, 'archive']
+        )->name('events.archive');
+
+        Route::patch(
+            '/events/{event}/restore-archive',
+            [AdminEventController::class, 'restoreArchive']
+        )->name('events.restore-archive');
+        Route::delete(
+            '/events/{event}/images/{eventImage}',
+            [AdminEventController::class, 'destroyImage']
+        )->name('events.images.destroy');
+        Route::patch(
+            '/events/{event}/images/{eventImage}/make-primary',
+            [AdminEventController::class, 'makePrimaryImage']
+        )->name('events.images.make-primary');
     });

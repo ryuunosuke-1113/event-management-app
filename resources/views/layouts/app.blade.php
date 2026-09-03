@@ -10,7 +10,6 @@
     <title>@yield('title', 'イベント運営アプリ')</title>
 
     @vite('resources/js/app.js')
-
     <style>
         body {
             font-family: sans-serif;
@@ -259,6 +258,36 @@
             font-size: 20px;
         }
 
+        .event-image-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            width: 100%;
+            max-width: 760px;
+            margin: 20px auto 28px;
+        }
+
+        .event-image-grid>img {
+            display: block;
+            width: 100%;
+            height: 240px;
+            max-width: 100%;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        /* イベント一覧のメイン画像 */
+        .event-list-image {
+            display: block;
+            width: 100%;
+            max-width: 420px;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 14px 0;
+        }
+
+
         @media (max-width: 700px) {
             .hero-card {
                 padding: 32px 24px;
@@ -270,6 +299,20 @@
 
             .home-features {
                 grid-template-columns: 1fr;
+            }
+
+            .event-image-grid {
+                grid-template-columns: 1fr;
+                max-width: 420px;
+            }
+
+            .event-image-grid>img {
+                height: 220px;
+            }
+
+            .event-list-image {
+                max-width: 100%;
+                height: 200px;
             }
         }
     </style>

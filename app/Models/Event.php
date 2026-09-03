@@ -20,10 +20,12 @@ class Event extends Model
         'chat_url',
         'cancel_policy',
         'organizer_id',
+        'archived_at',
     ];
 
     protected $casts = [
         'event_date' => 'datetime',
+        'archived_at' => 'datetime',
     ];
 
     public function getStatusLabelAttribute(): string
@@ -71,5 +73,11 @@ class Event extends Model
     public function organizer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'organizer_id');
+    }
+    public function images(): HasMany
+    {
+        return $this->hasMany(EventImage::class)
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 }
