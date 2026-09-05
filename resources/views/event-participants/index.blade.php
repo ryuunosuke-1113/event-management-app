@@ -89,6 +89,30 @@
                         </x-button>
                     </form>
                 @endif
+                @if (in_array($participant->status, ['pending_payment', 'confirmed'], true) &&
+                        auth()->id() !== $participant->event->organizer_id)
+                    <div style="margin-top: 10px;">
+                        <form method="POST" action="{{ route('direct-chat.start', $participant->event->organizer) }}">
+                            @csrf
+
+                            <input type="hidden" name="event_id" value="{{ $participant->event->id }}">
+
+                            <button type="submit" class="btn btn-online-payment">
+                                オンライン決済へ
+                            </button>
+                        </form>
+
+                        <p
+                            style="
+                margin: 6px 0 0;
+                font-size: 13px;
+                color: #6b7280;
+            ">
+                            PayPayなどのオンライン決済について、
+                            主催者とチャットで確認できます。
+                        </p>
+                    </div>
+                @endif
 
                 @if ($participant->status !== 'cancelled')
                     <x-link-button href="{{ route('event-participants.cancel-confirm', $participant) }}" variant="danger">

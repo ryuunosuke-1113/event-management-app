@@ -9,6 +9,10 @@
 
     <title>@yield('title', 'イベント運営アプリ')</title>
 
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
+    <meta name="theme-color" content="#0ea5e9">
+
     @vite('resources/js/app.js')
     <style>
         body {
@@ -287,6 +291,16 @@
             margin: 14px 0;
         }
 
+        .btn-online-payment {
+            background: #7dd3fc;
+            color: #0c4a6e;
+        }
+
+        .btn-online-payment:hover {
+            background: #38bdf8;
+            color: #082f49;
+        }
+
 
         @media (max-width: 700px) {
             .hero-card {
@@ -352,6 +366,34 @@
                     （ID: {{ auth()->user()->id }}）
                 </div>
             @endauth
+            <button id="pwa-install-button" type="button"
+                style="
+        display: none;
+        background: #7dd3fc;
+        color: #0c4a6e;
+        border: none;
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-weight: bold;
+        cursor: pointer;
+    ">
+                アプリをインストール
+            </button>
+
+            <div id="ios-install-guide"
+                style="
+        display: none;
+        margin-top: 10px;
+        padding: 12px;
+        background: #e0f2fe;
+        color: #0c4a6e;
+        border-radius: 8px;
+        font-size: 14px;
+    ">
+                iPhoneでは、Safariの共有ボタンから
+                「ホーム画面に追加」を選ぶと、
+                このアプリをホーム画面から起動できます。
+            </div>
 
 
             <x-button type="button" variant="secondary" id="navigation-toggle">
