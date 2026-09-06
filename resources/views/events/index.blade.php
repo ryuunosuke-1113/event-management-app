@@ -6,6 +6,20 @@
 
     <h1>イベント一覧</h1>
 
+    <div
+        style="
+        margin: 16px 0 24px;
+        padding: 12px 16px;
+        background: #e0f2fe;
+        color: #0c4a6e;
+        border-radius: 8px;
+        font-size: 14px;
+        line-height: 1.7;
+    ">
+        📌 このサイトをブックマークしておくと、
+        次回からすぐアクセスできます。
+    </div>
+
     @if ($events->isEmpty())
 
         <div class="card">

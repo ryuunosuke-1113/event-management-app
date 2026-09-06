@@ -352,49 +352,22 @@
             gap: 12px;
             padding: 12px 20px;
         ">
+
             <x-button type="button" variant="secondary" id="back-button" disabled>
                 ← 戻る
             </x-button>
 
             @auth
-                <div style="
-                font-weight: 600;
-                white-space: nowrap;
-            ">
+                <div
+                    style="
+                    font-weight: 600;
+                    white-space: nowrap;
+                ">
                     ログイン中：
                     {{ auth()->user()->name }}
                     （ID: {{ auth()->user()->id }}）
                 </div>
             @endauth
-            <button id="pwa-install-button" type="button"
-                style="
-        display: none;
-        background: #7dd3fc;
-        color: #0c4a6e;
-        border: none;
-        border-radius: 8px;
-        padding: 10px 16px;
-        font-weight: bold;
-        cursor: pointer;
-    ">
-                アプリをインストール
-            </button>
-
-            <div id="ios-install-guide"
-                style="
-        display: none;
-        margin-top: 10px;
-        padding: 12px;
-        background: #e0f2fe;
-        color: #0c4a6e;
-        border-radius: 8px;
-        font-size: 14px;
-    ">
-                iPhoneでは、Safariの共有ボタンから
-                「ホーム画面に追加」を選ぶと、
-                このアプリをホーム画面から起動できます。
-            </div>
-
 
             <x-button type="button" variant="secondary" id="navigation-toggle">
                 ☰ メニュー
@@ -406,20 +379,24 @@
                 <a href="{{ route('events.index') }}" class="{{ request()->routeIs('events.*') ? 'active' : '' }}">
                     イベント一覧
                 </a>
+
                 @auth
                     <a href="{{ route('event-participants.index') }}"
                         class="{{ request()->routeIs('event-participants.*') ? 'active' : '' }}">
                         自分の参加予定
                     </a>
+
                     <a href="{{ route('chats.index') }}" class="{{ request()->routeIs('chats.*') ? 'active' : '' }}">
                         チャット一覧
                     </a>
+
                     @if (Auth::user()->is_admin)
                         <a href="{{ route('admin.events.index') }}"
                             class="{{ request()->routeIs('admin.events.*') ? 'active' : '' }}">
                             イベント管理
                         </a>
                     @endif
+
                     <a href="{{ route('account.edit') }}" class="{{ request()->routeIs('account.*') ? 'active' : '' }}">
                         アカウント設定
                     </a>
@@ -441,7 +418,6 @@
                     </a>
                 @endauth
             </nav>
-
         </div>
     </header>
     <main id="main-content">
