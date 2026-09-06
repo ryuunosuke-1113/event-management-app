@@ -13,6 +13,7 @@ ENV VITE_REVERB_PORT=${VITE_REVERB_PORT}
 ENV VITE_REVERB_SCHEME=${VITE_REVERB_SCHEME}
 
 COPY package.json package-lock.json ./
+
 RUN npm ci
 
 COPY resources ./resources
@@ -20,6 +21,8 @@ COPY public ./public
 COPY vite.config.js ./
 
 RUN npm run build
+
+
 FROM php:8.4-fpm
 
 RUN apt-get update && apt-get install -y \
@@ -36,7 +39,9 @@ RUN apt-get update && apt-get install -y \
 RUN echo "upload_max_filesize=5M" > /usr/local/etc/php/conf.d/uploads.ini \
     && echo "post_max_size=10M" >> /usr/local/etc/php/conf.d/uploads.ini
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composerWORKDIR /var/www/html
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
 
 COPY . .
 
