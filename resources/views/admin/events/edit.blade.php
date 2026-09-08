@@ -195,11 +195,6 @@
             </div>
 
 
-            <div class="form-group">
-                <label for="chat_url">参加者用チャットURL</label>
-
-                <input type="url" id="chat_url" name="chat_url" value="{{ old('chat_url', $event->chat_url) }}">
-            </div>
 
 
             <div class="form-group">

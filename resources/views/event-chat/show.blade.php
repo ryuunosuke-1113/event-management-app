@@ -79,10 +79,25 @@
                             </span>
                         </div>
 
-                        <div style="white-space: pre-wrap;">
-                            {!! $message->body_html !!}
-                        </div>
+                        @if ($message->body)
+                            <div style="white-space: pre-wrap;">
+                                {!! $message->body_html !!}
+                            </div>
+                        @endif
 
+                        @if ($message->image_path)
+                            <div style="margin-top: 10px;">
+                                <img src="{{ asset('storage/' . $message->image_path) }}" alt="チャット画像"
+                                    style="
+                display: block;
+                max-width: 100%;
+                width: 420px;
+                max-height: 500px;
+                object-fit: contain;
+                border-radius: 10px;
+            ">
+                            </div>
+                        @endif
                         @if ($message->user_id === auth()->id())
                             <div id="read-count-{{ $message->id }}"
                                 style="
@@ -104,16 +119,30 @@
     <div class="card">
         <h2>メッセージを送る</h2>
 
-        <form id="message-form" method="POST" action="{{ route('event-chat.messages.store', $event) }}"> @csrf
+        <form id="message-form" method="POST" action="{{ route('event-chat.messages.store', $event) }}"
+            enctype="multipart/form-data">
+            @csrf
 
             <div class="form-group">
                 <label for="body">
                     メッセージ
                 </label>
 
-                <textarea id="body" name="body" rows="5" required>{{ old('body') }}</textarea>
+                <textarea id="body" name="body" rows="5">{{ old('body') }}</textarea>
 
                 @error('body')
+                    <p>{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div class="form-group">
+                <label for="image">
+                    写真
+                </label>
+
+                <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp">
+
+                @error('image')
                     <p>{{ $message }}</p>
                 @enderror
             </div>
@@ -123,7 +152,6 @@
             </x-button>
         </form>
     </div>
-
     <div class="card">
         <x-link-button href="{{ route('events.show', $event) }}" variant="secondary">
             イベント詳細へ戻る
@@ -134,18 +162,28 @@
         const conversationId = {{ $conversation->id }};
         const currentUserId = {{ auth()->id() }};
         const messageForm = document.getElementById('message-form');
-        const messageInput = document.getElementById('body');
+        const messageInput = messageForm?.querySelector('textarea[name="body"]');
+        const imageInput = messageForm?.querySelector('input[name="image"]');
 
         if (messageForm && messageInput) {
             messageForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
 
                 const body = messageInput.value.trim();
+                const hasImage =
+                    imageInput &&
+                    imageInput.files &&
+                    imageInput.files.length > 0;
 
-                if (!body) {
+                console.log('body:', body);
+                console.log('imageInput:', imageInput);
+                console.log('files:', imageInput?.files);
+                console.log('hasImage:', hasImage);
+
+                if (!body && !hasImage) {
+                    console.log('本文も画像もないので送信中止');
                     return;
                 }
-
                 const submitButton = messageForm.querySelector(
                     'button[type="submit"]'
                 );
@@ -155,6 +193,7 @@
                 }
 
                 try {
+                    const formData = new FormData(messageForm);
                     const response = await fetch(messageForm.action, {
                         method: 'POST',
                         headers: {
@@ -162,11 +201,8 @@
                                 'meta[name="csrf-token"]'
                             ).content,
                             'Accept': 'application/json',
-                            'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            body: body,
-                        }),
+                        body: formData,
                     });
 
                     if (!response.ok) {
@@ -180,6 +216,10 @@
                     }
 
                     messageInput.value = '';
+
+                    if (imageInput) {
+                        imageInput.value = '';
+                    }
                 } catch (error) {
                     console.error('message send failed:', error);
                 } finally {
@@ -282,14 +322,39 @@
             header.appendChild(name);
             header.appendChild(time);
 
-            const body = document.createElement('div');
-            body.style.whiteSpace = 'pre-wrap';
-
-            appendMessageBody(body, event.body);
-
             wrapper.appendChild(header);
-            wrapper.appendChild(body);
 
+            if (event.body) {
+                const body = document.createElement('div');
+
+                body.style.whiteSpace = 'pre-wrap';
+
+                appendMessageBody(body, event.body);
+
+                wrapper.appendChild(body);
+            }
+
+            if (event.image_url) {
+                const chatImageContainer = document.createElement('div');
+
+                chatImageContainer.style.marginTop = '10px';
+
+                const chatImage = document.createElement('img');
+
+                chatImage.src = event.image_url;
+                chatImage.alt = 'チャット画像';
+
+                chatImage.style.display = 'block';
+                chatImage.style.maxWidth = '100%';
+                chatImage.style.width = '420px';
+                chatImage.style.maxHeight = '500px';
+                chatImage.style.objectFit = 'contain';
+                chatImage.style.borderRadius = '10px';
+
+                chatImageContainer.appendChild(chatImage);
+
+                wrapper.appendChild(chatImageContainer);
+            }
             if (event.user.id === currentUserId) {
                 const readCount = document.createElement('div');
 

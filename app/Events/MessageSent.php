@@ -37,6 +37,14 @@ class MessageSent implements ShouldBroadcastNow
         return [
             'id' => $this->message->id,
             'body' => $this->message->body,
+
+            'image_url' => $this->message->image_path
+                ? asset(
+                    'storage/' .
+                    $this->message->image_path
+                )
+                : null,
+
             'created_at' => $this->message->created_at
                 ->format('Y/m/d H:i'),
 

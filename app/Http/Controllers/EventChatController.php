@@ -69,12 +69,36 @@ class EventChatController extends Controller
         }
 
         $validated = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['nullable', 'string', 'max:5000'],
+            'image' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
         ]);
+
+        if (
+            empty($validated['body'])
+            && !$request->hasFile('image')
+        ) {
+            return back()
+                ->withErrors([
+                    'body' => 'メッセージまたは画像を入力してください。',
+                ]);
+        }
+
+        $imagePath = null;
+
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')
+                ->store('chat-images', 'public');
+        }
 
         $message = $conversation->messages()->create([
             'user_id' => $request->user()->id,
-            'body' => $validated['body'],
+            'body' => $validated['body'] ?? null,
+            'image_path' => $imagePath,
         ]);
 
         MessageSent::dispatch($message);
