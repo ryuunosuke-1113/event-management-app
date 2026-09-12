@@ -19,6 +19,84 @@
             {{ $otherMember->user->name }} さんとのチャット
         </strong>
     </div>
+    <div class="card">
+        <h2>メッセージ</h2>
+
+        <div id="message-list">
+            @if ($conversation->messages->isEmpty())
+                <p id="empty-message">
+                    まだメッセージはありません。
+                </p>
+            @else
+                @foreach ($conversation->messages as $message)
+                    <div
+                        style="
+                        padding: 12px;
+                        margin-bottom: 12px;
+                        border-radius: 10px;
+                        background: #f8fafc;
+                    ">
+                        <div
+                            style="
+                            display: flex;
+                            align-items: center;
+                            gap: 10px;
+                            margin-bottom: 8px;
+                        ">
+                            @if ($message->user->profile?->photo_path)
+                                <img src="{{ asset('storage/' . $message->user->profile->photo_path) }}"
+                                    alt="{{ $message->user->name }}"
+                                    style="
+                                    width: 40px;
+                                    height: 40px;
+                                    object-fit: cover;
+                                    border-radius: 50%;
+                                ">
+                            @endif
+
+                            <strong>
+                                {{ $message->user->name }}
+                            </strong>
+                        </div>
+
+                        @if ($message->body)
+                            <div style="margin-top: 6px; white-space: pre-wrap;">
+                                {!! $message->body_html !!}
+                            </div>
+                        @endif
+
+                        @if ($message->image_path)
+                            <div style="margin-top: 10px;">
+                                <img src="{{ asset('storage/' . $message->image_path) }}" alt="チャット画像"
+                                    style="
+                                    display: block;
+                                    max-width: 100%;
+                                    width: 420px;
+                                    max-height: 500px;
+                                    object-fit: contain;
+                                    border-radius: 10px;
+                                ">
+                            </div>
+                        @endif
+
+                        @if ($message->user_id === auth()->id())
+                            <div id="read-count-{{ $message->id }}"
+                                style="
+                                margin-top: 6px;
+                                font-size: 0.8rem;
+                                color: #6b7280;
+                                text-align: right;
+                            ">
+                                @if ($message->reads->count() > 0)
+                                    既読
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            @endif
+        </div>
+    </div>
 
 
     <div id="chat-bottom"></div>
