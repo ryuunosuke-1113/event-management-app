@@ -122,6 +122,7 @@
                 </label>
 
                 <input type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp">
+                <div id="image-preview" style="margin-top: 10px;"></div>
 
                 @error('image')
                     <p class="error">
@@ -145,6 +146,39 @@
         const messageForm = document.getElementById('message-form');
         const messageInput = messageForm?.querySelector('textarea[name="body"]');
         const imageInput = messageForm?.querySelector('input[name="image"]');
+        const imagePreview = document.getElementById('image-preview');
+
+        if (imageInput && imagePreview) {
+            imageInput.addEventListener('change', () => {
+                imagePreview.innerHTML = '';
+
+                const file = imageInput.files?.[0];
+
+                if (!file) {
+                    return;
+                }
+
+                const imageUrl = URL.createObjectURL(file);
+
+                const previewImage = document.createElement('img');
+
+                previewImage.src = imageUrl;
+                previewImage.alt = '送信前プレビュー';
+
+                previewImage.style.display = 'block';
+                previewImage.style.maxWidth = '100%';
+                previewImage.style.width = '300px';
+                previewImage.style.maxHeight = '300px';
+                previewImage.style.objectFit = 'contain';
+                previewImage.style.borderRadius = '10px';
+
+                previewImage.onload = () => {
+                    URL.revokeObjectURL(imageUrl);
+                };
+
+                imagePreview.appendChild(previewImage);
+            });
+        }
         if (messageForm && messageInput) {
             messageForm.addEventListener('submit', async (event) => {
                 event.preventDefault();
@@ -193,6 +227,9 @@
 
                     if (imageInput) {
                         imageInput.value = '';
+                    }
+                    if (imagePreview) {
+                        imagePreview.innerHTML = '';
                     }
                 } catch (error) {
                     console.error('message send failed:', error);
