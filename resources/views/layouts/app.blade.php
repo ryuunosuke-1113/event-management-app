@@ -391,13 +391,15 @@
                         チャット一覧
                     </a>
 
+                    <a href="{{ route('organizer.events.index') }}"
+                        class="{{ request()->routeIs('organizer.events.*') ? 'active' : '' }}">
+                        イベント管理
+                    </a>
                     @if (Auth::user()->is_admin)
-                        <a href="{{ route('admin.events.index') }}"
-                            class="{{ request()->routeIs('admin.events.*') ? 'active' : '' }}">
-                            イベント管理
+                        <a href="{{ route('admin.events.index') }}">
+                            管理者イベント管理
                         </a>
                     @endif
-
                     <a href="{{ route('account.edit') }}" class="{{ request()->routeIs('account.*') ? 'active' : '' }}">
                         アカウント設定
                     </a>

@@ -210,7 +210,7 @@
                     更新する
                 </x-button>
 
-                <x-link-button href="{{ route('admin.events.show', $event) }}" variant="secondary">
+                <x-link-button href="{{ route('organizer.events.show', $event) }}" variant="secondary">
                     詳細へ戻る
                 </x-link-button>
 

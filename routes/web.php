@@ -20,6 +20,7 @@ use App\Http\Controllers\DirectChatController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\ResetPasswordController;
 use App\Http\Controllers\Organizer\EventController as OrganizerEventController;
+use App\Http\Controllers\Organizer\EventParticipantController as OrganizerEventParticipantController;
 
 
 
@@ -301,6 +302,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 '/events/{event}/images/{eventImage}',
                 [OrganizerEventController::class, 'destroyImage']
             )->name('events.images.destroy');
+            Route::patch(
+                '/event-participants/{eventParticipant}/attendance',
+                [OrganizerEventParticipantController::class, 'updateAttendance']
+            )->name('event-participants.attendance');
+            Route::post(
+                '/event-participants/{eventParticipant}/confirm-online-payment',
+                [OrganizerEventParticipantController::class, 'confirmOnlinePayment']
+            )->name('event-participants.confirm-online-payment');
+            Route::patch(
+                '/event-participants/{eventParticipant}/refund-complete',
+                [OrganizerEventParticipantController::class, 'completeRefund']
+            )->name('event-participants.refund-complete');
         });
 });
 

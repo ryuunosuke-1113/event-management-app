@@ -200,7 +200,7 @@
                                 <td>
                                     @if ($participant->status === 'confirmed')
                                         <form method="POST"
-                                            action="{{ route('admin.event-participants.attendance', $participant) }}">
+                                            action="{{ route('organizer.event-participants.attendance', $participant) }}">
                                             @csrf
                                             @method('PATCH')
 
@@ -229,7 +229,7 @@
                                 <td>
                                     @if ($participant->status === 'pending_payment')
                                         <form method="POST"
-                                            action="{{ route('admin.event-participants.confirm-online-payment', $participant) }}">
+                                            action="{{ route('organizer.event-participants.confirm-online-payment', $participant) }}">
                                             @csrf
 
                                             <x-button type="submit" variant="primary">
@@ -241,7 +241,7 @@
                                             $participant->payment->payment_method === 'online' &&
                                             $participant->payment->refund_status === 'pending')
                                         <form method="POST"
-                                            action="{{ route('admin.event-participants.refund-complete', $participant) }}"
+                                            action="{{ route('organizer.event-participants.refund-complete', $participant) }}"
                                             onsubmit="return confirm('実際の返金対応は完了していますか？')">
                                             @csrf
                                             @method('PATCH')
