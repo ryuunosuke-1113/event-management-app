@@ -1,65 +1,41 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers\Organizer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\EventImage;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Stripe\StripeClient;
 use Throwable;
-use Illuminate\Support\Facades\Storage;
-use App\Models\EventImage;
 use Illuminate\Support\Facades\Gate;
+
 class EventController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $events = Event::with('images')
-            ->whereNull('archived_at')
-            ->orderBy('event_date')
+            ->where('organizer_id', $request->user()->id)
+            ->latest()
             ->get();
-        return view('admin.events.index', compact('events'));
+        return view('organizer.events.index', compact('events'));
     }
-    public function archive(Event $event)
+    public function show(Event $event)
     {
-        if (!in_array($event->status, ['finished', 'cancelled'], true)) {
-            return back()->with(
-                'error',
-                '開催終了または中止したイベントのみアーカイブできます。'
-            );
-        }
+        Gate::authorize('update', $event);
 
-        $event->update([
-            'archived_at' => now(),
+        $event->load([
+            'images',
+            'participants',
         ]);
 
-        return redirect()
-            ->route('admin.events.index')
-            ->with('success', 'イベントをアーカイブしました。');
-    }
-    public function restoreArchive(Event $event)
-    {
-        $event->update([
-            'archived_at' => null,
-        ]);
-
-        return redirect()
-            ->route('admin.events.archived')
-            ->with('success', 'イベントのアーカイブを解除しました。');
-    }
-    public function archived()
-    {
-        $events = Event::whereNotNull('archived_at')
-            ->orderByDesc('event_date')
-            ->get();
-
-        return view('admin.events.archived', compact('events'));
+        return view('organizer.events.show', compact('event'));
     }
     public function create()
     {
-        return view('admin.events.create');
+        return view('organizer.events.create');
     }
-
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -78,11 +54,12 @@ class EventController extends Controller
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
-
         ]);
+
         $validated['organizer_id'] = $request->user()->id;
 
         $event = Event::create($validated);
+
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $index => $image) {
                 $path = $image->store(
@@ -104,25 +81,17 @@ class EventController extends Controller
         $conversation->members()->firstOrCreate([
             'user_id' => $event->organizer_id,
         ]);
+
         return redirect()
-            ->route('admin.events.index')
+            ->route('organizer.events.index')
             ->with('success', 'イベントを作成しました。');
-    }
-    public function show(Event $event)
-    {
-        $event->load([
-            'images',
-            'participants.user',
-            'participants.payment',
-        ]);
-        return view('admin.events.show', compact('event'));
     }
     public function edit(Event $event)
     {
         Gate::authorize('update', $event);
-        return view('admin.events.edit', compact('event'));
-    }
 
+        return view('organizer.events.edit', compact('event'));
+    }
     public function update(Request $request, Event $event)
     {
         Gate::authorize('update', $event);
@@ -287,7 +256,7 @@ class EventController extends Controller
         }
 
         return redirect()
-            ->route('admin.events.show', $event)
+            ->route('organizer.events.index')
             ->with(
                 'success',
                 $isBeingCancelled
@@ -295,27 +264,10 @@ class EventController extends Controller
                 : 'イベントを更新しました。'
             );
     }
-    public function destroy(Event $event)
-    {
-        $hasParticipants = $event->participants()->exists();
-
-        if ($event->status !== 'draft' || $hasParticipants) {
-            return redirect()
-                ->route('admin.events.show', $event)
-                ->with(
-                    'error',
-                    'イベントは、下書き状態かつ参加申込がない場合のみ削除できます。'
-                );
-        }
-
-        $event->delete();
-
-        return redirect()
-            ->route('admin.events.index')
-            ->with('success', 'イベントを削除しました。');
-    }
     public function destroyImage(Event $event, EventImage $eventImage)
     {
+        Gate::authorize('update', $event);
+
         if ($eventImage->event_id !== $event->id) {
             abort(404);
         }
@@ -327,8 +279,11 @@ class EventController extends Controller
         return back()
             ->with('success', 'イベント画像を削除しました。');
     }
+
     public function makePrimaryImage(Event $event, EventImage $eventImage)
     {
+        Gate::authorize('update', $event);
+
         if ($eventImage->event_id !== $event->id) {
             abort(404);
         }
@@ -341,5 +296,68 @@ class EventController extends Controller
 
         return back()
             ->with('success', 'この画像を1枚目に設定しました。');
+    }
+    public function destroy(Event $event)
+    {
+        Gate::authorize('update', $event);
+
+        $hasParticipants = $event->participants()->exists();
+
+        if ($event->status !== 'draft' || $hasParticipants) {
+            return redirect()
+                ->route('organizer.events.show', $event)
+                ->with(
+                    'error',
+                    'イベントは、下書き状態かつ参加申込がない場合のみ削除できます。'
+                );
+        }
+
+        $event->delete();
+
+        return redirect()
+            ->route('organizer.events.index')
+            ->with('success', 'イベントを削除しました。');
+    }
+    public function archive(Event $event)
+    {
+        Gate::authorize('update', $event);
+
+        if (!in_array($event->status, ['finished', 'cancelled'], true)) {
+            return back()->with(
+                'error',
+                '開催終了または中止したイベントのみアーカイブできます。'
+            );
+        }
+
+        $event->update([
+            'archived_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('organizer.events.index')
+            ->with('success', 'イベントをアーカイブしました。');
+    }
+
+    public function restoreArchive(Event $event)
+    {
+        Gate::authorize('update', $event);
+
+        $event->update([
+            'archived_at' => null,
+        ]);
+
+        return redirect()
+            ->route('organizer.events.archived')
+            ->with('success', 'イベントのアーカイブを解除しました。');
+    }
+    public function archived(Request $request)
+    {
+        $events = Event::with('images')
+            ->where('organizer_id', $request->user()->id)
+            ->whereNotNull('archived_at')
+            ->orderByDesc('event_date')
+            ->get();
+
+        return view('organizer.events.archived', compact('events'));
     }
 }

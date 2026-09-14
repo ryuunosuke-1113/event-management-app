@@ -19,6 +19,7 @@ use App\Http\Controllers\ChatController;
 use App\Http\Controllers\DirectChatController;
 use App\Http\Controllers\ForgotPasswordController;
 use App\Http\Controllers\ResetPasswordController;
+use App\Http\Controllers\Organizer\EventController as OrganizerEventController;
 
 
 
@@ -257,6 +258,50 @@ Route::middleware(['auth', 'verified'])->group(function () {
         '/chats/{conversation}/restore',
         [ChatController::class, 'restore']
     )->name('chats.restore');
+    Route::prefix('organizer')
+        ->name('organizer.')
+        ->group(function () {
+
+            Route::get('/events', [OrganizerEventController::class, 'index'])
+                ->name('events.index');
+
+            Route::get('/events/create', [OrganizerEventController::class, 'create'])
+                ->name('events.create');
+
+            Route::post('/events', [OrganizerEventController::class, 'store'])
+                ->name('events.store');
+
+            Route::get('/events-archived', [OrganizerEventController::class, 'archived'])
+                ->name('events.archived');
+
+            Route::get('/events/{event}', [OrganizerEventController::class, 'show'])
+                ->name('events.show');
+
+            Route::get('/events/{event}/edit', [OrganizerEventController::class, 'edit'])
+                ->name('events.edit');
+
+            Route::put('/events/{event}', [OrganizerEventController::class, 'update'])
+                ->name('events.update');
+
+            Route::delete('/events/{event}', [OrganizerEventController::class, 'destroy'])
+                ->name('events.destroy');
+
+            Route::patch('/events/{event}/archive', [OrganizerEventController::class, 'archive'])
+                ->name('events.archive');
+
+            Route::patch('/events/{event}/restore-archive', [OrganizerEventController::class, 'restoreArchive'])
+                ->name('events.restore-archive');
+
+            Route::patch(
+                '/events/{event}/images/{eventImage}/make-primary',
+                [OrganizerEventController::class, 'makePrimaryImage']
+            )->name('events.images.make-primary');
+
+            Route::delete(
+                '/events/{event}/images/{eventImage}',
+                [OrganizerEventController::class, 'destroyImage']
+            )->name('events.images.destroy');
+        });
 });
 
 /*
