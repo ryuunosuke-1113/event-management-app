@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (Schema::hasColumn('admin_notices', 'user_id')) {
+            return;
+        }
+
         Schema::table('admin_notices', function (Blueprint $table) {
             $table->foreignId('user_id')
                 ->after('id')
@@ -44,7 +48,6 @@ return new class extends Migration {
             ]);
         });
     }
-
     public function down(): void
     {
         Schema::table('admin_notices', function (Blueprint $table) {
