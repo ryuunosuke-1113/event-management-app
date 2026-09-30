@@ -45,17 +45,17 @@
             </div>
 
             <div class="form-group">
-                <label for="bio">
-                    自己紹介
+                <label>
+                    <input type="checkbox" name="show_participation_history" value="1"
+                        {{ old('show_participation_history', $profile->show_participation_history) ? 'checked' : '' }}>
+
+                    過去に参加したイベントをプロフィールに公開する
                 </label>
 
-                <textarea id="bio" name="bio" rows="6">{{ old('bio', $profile->bio) }}</textarea>
-
-                @error('bio')
+                @error('show_participation_history')
                     <p>{{ $message }}</p>
                 @enderror
             </div>
-
             <x-button type="submit" variant="primary">
                 プロフィールを保存
             </x-button>

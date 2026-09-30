@@ -227,32 +227,7 @@
                                 </td>
 
                                 <td>
-                                    @if ($participant->status === 'pending_payment')
-                                        <form method="POST"
-                                            action="{{ route('organizer.event-participants.confirm-online-payment', $participant) }}">
-                                            @csrf
-
-                                            <x-button type="submit" variant="primary">
-                                                オンライン決済済みとして確定
-                                            </x-button>
-                                        </form>
-                                    @elseif (
-                                        $participant->payment &&
-                                            $participant->payment->payment_method === 'online' &&
-                                            $participant->payment->refund_status === 'pending')
-                                        <form method="POST"
-                                            action="{{ route('organizer.event-participants.refund-complete', $participant) }}"
-                                            onsubmit="return confirm('実際の返金対応は完了していますか？')">
-                                            @csrf
-                                            @method('PATCH')
-
-                                            <x-button type="submit" variant="primary">
-                                                返金済みにする
-                                            </x-button>
-                                        </form>
-                                    @else
-                                        -
-                                    @endif
+                                    -
                                 </td>
                             </tr>
                         @endforeach

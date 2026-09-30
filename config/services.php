@@ -37,6 +37,15 @@ return [
     'stripe' => [
         'secret' => env('STRIPE_SECRET'),
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+        'platform_fee_percent' => env('PLATFORM_FEE_PERCENT', 3),
+        'card_processing_fee_percent' => env(
+            'STRIPE_CARD_PROCESSING_FEE_PERCENT',
+            3.6
+        ),
+        'local_connect_bypass' => env(
+            'LOCAL_STRIPE_CONNECT_BYPASS',
+            false
+        ),
     ],
     'resend' => [
         'key' => env('RESEND_KEY'),

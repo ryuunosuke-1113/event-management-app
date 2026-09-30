@@ -10,16 +10,63 @@ use Illuminate\Http\Request;
 use Stripe\StripeClient;
 use Throwable;
 use Illuminate\Support\Facades\Gate;
+use App\Services\AdminNoticeService;
+use App\Models\User;
+use App\Services\EventCancellationService;
+use Carbon\Carbon;
 
 class EventController extends Controller
 {
     public function index(Request $request)
     {
+        $user = $request->user();
+
         $events = Event::with('images')
-            ->where('organizer_id', $request->user()->id)
+            ->where('organizer_id', $user->id)
             ->latest()
             ->get();
-        return view('organizer.events.index', compact('events'));
+
+        $stripeConnectStatus = 'not_connected';
+
+        if ($user->stripe_account_id) {
+            try {
+                $stripe = new StripeClient(
+                    config('services.stripe.secret')
+                );
+
+                $account = $stripe->v2->core->accounts->retrieve(
+                    $user->stripe_account_id,
+                    [
+                        'include' => [
+                            'configuration.recipient',
+                        ],
+                    ]
+                );
+
+                $transferStatus =
+                    $account->configuration?->recipient
+                        ?->capabilities?->stripe_balance
+                        ?->stripe_transfers?->status;
+
+                if (
+                    $account->configuration?->recipient?->applied === true
+                    && $transferStatus === 'active'
+                ) {
+                    $stripeConnectStatus = 'active';
+                } else {
+                    $stripeConnectStatus = 'incomplete';
+                }
+            } catch (\Throwable $e) {
+                report($e);
+
+                $stripeConnectStatus = 'error';
+            }
+        }
+
+        return view('organizer.events.index', compact(
+            'events',
+            'stripeConnectStatus'
+        ));
     }
     public function show(Event $event)
     {
@@ -27,35 +74,95 @@ class EventController extends Controller
 
         $event->load([
             'images',
-            'participants',
+            'participants.user.profile',
+            'participants.payment',
         ]);
-
-        return view('organizer.events.show', compact('event'));
+        return view(
+            'organizer.events.show',
+            compact('event')
+        );
     }
-    public function create()
+    public function create(Request $request)
     {
+        $user = $request->user();
+
+        if (
+            in_array($user->account_status, [
+                'creation_suspended',
+                'full_suspended',
+            ], true)
+        ) {
+            return redirect()
+                ->route('organizer.events.index')
+                ->with(
+                    'error',
+                    '現在、運営によりイベントの作成が制限されています。'
+                );
+        }
         return view('organizer.events.create');
     }
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            'description' => ['required', 'string'],
-            'event_date' => ['required', 'date'],
-            'place' => ['required', 'string', 'max:255'],
-            'capacity' => ['required', 'integer', 'min:1'],
-            'price' => ['required', 'integer', 'min:0'],
-            'status' => ['required', 'in:draft,published,closed,finished,cancelled'],
-            'chat_url' => ['nullable', 'url'],
-            'cancel_policy' => ['nullable', 'string'],
-            'images' => ['nullable', 'array'],
-            'images.*' => [
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ],
-        ]);
+        $user = $request->user();
 
+        if (
+            in_array($user->account_status, [
+                'creation_suspended',
+                'full_suspended',
+            ], true)
+        ) {
+            return redirect()
+                ->route('organizer.events.index')
+                ->with(
+                    'error',
+                    '現在、運営によりイベントの作成が制限されています。'
+                );
+        }
+        $validated = $request->validate(
+            [
+                'title' => ['required', 'string', 'max:255'],
+                'description' => ['required', 'string'],
+                'event_date' => [
+                    'required',
+                    'date',
+                    'after:now',
+                ],
+                'place' => ['required', 'string', 'max:255'],
+                'capacity' => ['required', 'integer', 'min:1'],
+                'price' => ['required', 'integer', 'min:500'],
+                'status' => [
+                    'required',
+                    'in:draft,published,closed,finished,cancelled',
+                ],
+                'chat_url' => ['nullable', 'url'],
+                'images' => ['nullable', 'array'],
+                'images.*' => [
+                    'image',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:5120',
+                ],
+            ],
+            [
+                'event_date.after' =>
+                    '開催日時に過去の日時を指定することはできません。',
+            ]
+        );
+        $connectBypass =
+            app()->environment('local')
+            && config('services.stripe.local_connect_bypass');
+
+        if (
+            $validated['status'] === 'published'
+            && !$connectBypass
+            && !$this->hasActiveStripeConnect($request->user())
+        ) {
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'イベントを公開するには、Stripe連携を完了してください。'
+                );
+        }
         $validated['organizer_id'] = $request->user()->id;
 
         $event = Event::create($validated);
@@ -92,8 +199,11 @@ class EventController extends Controller
 
         return view('organizer.events.edit', compact('event'));
     }
-    public function update(Request $request, Event $event)
-    {
+    public function update(
+        Request $request,
+        Event $event,
+        EventCancellationService $eventCancellationService
+    ) {
         Gate::authorize('update', $event);
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
@@ -101,10 +211,9 @@ class EventController extends Controller
             'event_date' => ['required', 'date'],
             'place' => ['required', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1'],
-            'price' => ['required', 'integer', 'min:0'],
+            'price' => ['required', 'integer', 'min:500'],
             'status' => ['required', 'in:draft,published,closed,finished,cancelled'],
             'chat_url' => ['nullable', 'url'],
-            'cancel_policy' => ['nullable', 'string'],
             'images' => ['nullable', 'array'],
             'images.*' => [
                 'image',
@@ -112,6 +221,38 @@ class EventController extends Controller
                 'max:5120',
             ],
         ]);
+        $newEventDate = Carbon::parse($validated['event_date']);
+
+        $eventDateChanged = !$newEventDate->equalTo(
+            $event->event_date
+        );
+
+        if (
+            $eventDateChanged
+            && $newEventDate->lte(now())
+        ) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'event_date' => '開催日時を過去の日時に変更することはできません。',
+                ]);
+        }
+        $connectBypass =
+            app()->environment('local')
+            && config('services.stripe.local_connect_bypass');
+
+        if (
+            $validated['status'] === 'published'
+            && !$connectBypass
+            && !$this->hasActiveStripeConnect($request->user())
+        ) {
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'イベントを公開するには、Stripe連携を完了してください。'
+                );
+        }
 
         // 一度中止したイベントを再公開しない
         if (
@@ -127,118 +268,27 @@ class EventController extends Controller
             $event->status !== 'cancelled'
             && $validated['status'] === 'cancelled';
 
+
         if ($isBeingCancelled) {
-            $event->load('participants.payment');
+            try {
+                $eventCancellationService->cancel(
+                    $event,
+                    '主催者都合によるイベント中止'
+                );
+            } catch (Throwable $e) {
+                report($e);
 
-            $stripe = new StripeClient(
-                config('services.stripe.secret')
-            );
-
-            foreach ($event->participants as $participant) {
-                $payment = $participant->payment;
-
-                /*
-                |--------------------------------------------------------------------------
-                | 参加確定 + 支払い済み
-                |--------------------------------------------------------------------------
-                */
-                if (
-                    $participant->status === 'confirmed'
-                    && $payment
-                    && $payment->status === 'paid'
-                ) {
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Stripe決済
-                    |--------------------------------------------------------------------------
-                    */
-                    if ($payment->payment_method === 'stripe') {
-                        if (!$payment->stripe_payment_intent_id) {
-                            return back()
-                                ->withInput()
-                                ->with(
-                                    'error',
-                                    'Stripeの決済情報が見つからない参加者がいるため、イベント中止を完了できませんでした。'
-                                );
-                        }
-
-                        try {
-                            $stripe->refunds->create([
-                                'payment_intent' => $payment->stripe_payment_intent_id,
-                            ]);
-                        } catch (Throwable $e) {
-                            report($e);
-
-                            return back()
-                                ->withInput()
-                                ->with(
-                                    'error',
-                                    'Stripeの返金処理に失敗しました。イベントはまだ中止されていません。'
-                                );
-                        }
-
-                        $payment->update([
-                            'status' => 'refunded',
-                            'refund_status' => 'completed',
-                            'refund_due_amount' => $payment->amount,
-                            'refunded_amount' => $payment->amount,
-                            'refunded_at' => now(),
-                        ]);
-                    }
-
-                    /*
-                    |--------------------------------------------------------------------------
-                    | その他オンライン決済
-                    |--------------------------------------------------------------------------
-                    |
-                    | Stripeでは返金できないため、
-                    | 管理者による手動返金待ちにする。
-                    |--------------------------------------------------------------------------
-                    */ elseif ($payment->payment_method === 'online') {
-                        $payment->update([
-                            'refund_status' => 'pending',
-                            'refund_due_amount' => $payment->amount,
-                            'refunded_amount' => null,
-                            'refunded_at' => null,
-                        ]);
-                    }
-
-                    $participant->update([
-                        'status' => 'cancelled',
-                        'cancelled_at' => now(),
-                        'payment_expires_at' => null,
-                    ]);
-
-                    continue;
-                }
-
-                /*
-                |--------------------------------------------------------------------------
-                | 決済待ち
-                |--------------------------------------------------------------------------
-                */
-                if (
-                    $participant->status === 'pending_payment'
-                    && $payment
-                    && $payment->status === 'pending'
-                ) {
-                    $payment->update([
-                        'status' => 'failed',
-                        'refund_status' => 'not_required',
-                        'refund_due_amount' => 0,
-                    ]);
-                }
-
-                if ($participant->status !== 'cancelled') {
-                    $participant->update([
-                        'status' => 'cancelled',
-                        'cancelled_at' => now(),
-                        'payment_expires_at' => null,
-                    ]);
-                }
+                return back()
+                    ->withInput()
+                    ->with(
+                        'error',
+                        '返金またはイベント中止処理に失敗しました。イベントは中止されていません。'
+                    );
             }
         }
-        $event->update($validated);
+        if (!$isBeingCancelled) {
+            $event->update($validated);
+        }
         if ($request->hasFile('images')) {
             $nextSortOrder = ($event->images()->max('sort_order') ?? -1) + 1;
 
@@ -359,5 +409,40 @@ class EventController extends Controller
             ->get();
 
         return view('organizer.events.archived', compact('events'));
+    }
+    private function hasActiveStripeConnect($user): bool
+    {
+        if (!$user->stripe_account_id) {
+            return false;
+        }
+
+        try {
+            $stripe = new StripeClient(
+                config('services.stripe.secret')
+            );
+
+            $account = $stripe->v2->core->accounts->retrieve(
+                $user->stripe_account_id,
+                [
+                    'include' => [
+                        'configuration.recipient',
+                    ],
+                ]
+            );
+
+            $transferStatus =
+                $account->configuration?->recipient
+                    ?->capabilities?->stripe_balance
+                    ?->stripe_transfers?->status;
+
+            return
+                $account->configuration?->recipient?->applied === true
+                && $transferStatus === 'active';
+
+        } catch (Throwable $e) {
+            report($e);
+
+            return false;
+        }
     }
 }

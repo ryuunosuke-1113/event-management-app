@@ -67,6 +67,27 @@
 
                 <textarea id="bio" name="bio" rows="5">{{ old('bio', $user->profile?->bio) }}</textarea>
             </div>
+            <div class="form-group">
+                <label
+                    style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        ">
+                    <input type="checkbox" name="show_participation_history" value="1"
+                        {{ old('show_participation_history', $user->profile?->show_participation_history ?? true) ? 'checked' : '' }}
+                        style="
+                width: 18px;
+                height: 18px;
+                margin: 0;
+            ">
+
+                    <span>
+                        過去に参加したイベントをプロフィールに公開する
+                    </span>
+                </label>
+            </div>
 
             <hr>
 

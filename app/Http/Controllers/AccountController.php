@@ -52,6 +52,7 @@ class AccountController extends Controller
                 'confirmed',
                 'min:8',
             ],
+            'show_participation_history' => ['nullable', 'boolean'],
         ]);
 
         $user->name = $validated['name'];
@@ -71,6 +72,8 @@ class AccountController extends Controller
         }
 
         $profile->bio = $validated['bio'] ?? null;
+        $profile->show_participation_history =
+            $request->boolean('show_participation_history');
         $profile->save();
 
         return redirect()

@@ -18,6 +18,17 @@
             </div>
         @endif
 
+        <div style="margin-bottom: 24px;">
+            <p>
+                イベントを作成する前に、
+                参加費・禁止事項・キャンセルルールをご確認ください。
+            </p>
+
+            <x-link-button href="{{ route('organizer.events.guidelines') }}" variant="secondary">
+                イベント作成時の確認事項を見る
+            </x-link-button>
+        </div>
+
         <form method="POST" action="{{ route('organizer.events.store') }}" enctype="multipart/form-data"> @csrf
 
             <div class="form-group">
@@ -53,9 +64,8 @@
             <div class="form-group">
                 <label for="price">参加費（円）</label>
 
-                <input type="number" id="price" name="price" min="0" value="{{ old('price', 0) }}" required>
+                <input type="number" id="price" name="price" min="500" value="{{ old('price', 500) }}" required>
             </div>
-
             <div class="form-group">
                 <label for="status">状態</label>
 
@@ -117,11 +127,6 @@
                 @enderror
             </div>
 
-            <div class="form-group">
-                <label for="cancel_policy">キャンセルポリシー</label>
-
-                <textarea id="cancel_policy" name="cancel_policy" rows="4">{{ old('cancel_policy') }}</textarea>
-            </div>
 
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
 

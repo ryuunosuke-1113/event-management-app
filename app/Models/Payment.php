@@ -42,16 +42,6 @@ class Payment extends Model
     }
     public function getDisplayStatusLabelAttribute(): string
     {
-        if ($this->payment_method === 'online') {
-            return match ($this->status) {
-                'pending' => 'オンライン決済確認待ち',
-                'paid' => 'オンライン決済済み',
-                'failed' => 'オンライン決済失敗',
-                'refunded' => '返金済み',
-                default => '不明',
-            };
-        }
-
         return match ($this->status) {
             'pending' => 'Stripe決済待ち',
             'paid' => 'Stripe支払い済み',

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Event extends Model
 {
@@ -49,14 +50,20 @@ class Event extends Model
         $cancelDate = $cancelledAt->copy()->startOfDay();
 
         if ($cancelDate->lte($eventDate->copy()->subDays(3))) {
-            return 100;
+            return (int) config(
+                'event.cancel_policy.participant.three_days_before'
+            );
         }
 
         if ($cancelDate->lt($eventDate)) {
-            return 50;
+            return (int) config(
+                'event.cancel_policy.participant.two_days_to_day_before'
+            );
         }
 
-        return 0;
+        return (int) config(
+            'event.cancel_policy.participant.event_day'
+        );
     }
     public function refundAmountAt(
         CarbonInterface $cancelledAt,
@@ -80,4 +87,9 @@ class Event extends Model
             ->orderBy('sort_order')
             ->orderBy('id');
     }
+    public function conversation(): HasOne
+    {
+        return $this->hasOne(Conversation::class);
+    }
+
 }

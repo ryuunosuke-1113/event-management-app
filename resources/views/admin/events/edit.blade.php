@@ -161,7 +161,7 @@
             <div class="form-group">
                 <label for="price">参加費（円）</label>
 
-                <input type="number" id="price" name="price" min="0"
+                <input type="number" id="price" name="price" min="500"
                     value="{{ old('price', $event->price) }}" required>
             </div>
 

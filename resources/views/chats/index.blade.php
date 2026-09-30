@@ -43,7 +43,9 @@
     ">
                         @if ($conversation->type === 'event')
                             <h2>
-                                {{ $conversation->event->title }}
+                                <a href="{{ route('events.show', $conversation->event) }}">
+                                    {{ $conversation->event->title }}
+                                </a>
                             </h2>
                             @if ($conversation->event?->status === 'finished')
                                 <span
@@ -152,7 +154,9 @@
                                 @endphp
 
                                 <h2>
-                                    {{ $otherMember->user->name }} さん
+                                    <a href="{{ route('profile.show', $otherMember->user) }}">
+                                        {{ $otherMember->user->name }} さん
+                                    </a>
                                 </h2>
                                 <span id="unread-count-{{ $conversation->id }}"
                                     style="

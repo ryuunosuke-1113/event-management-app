@@ -54,14 +54,7 @@
                 @if ($participant->payment)
                     <p>
                         決済方法：
-                        @if ($participant->payment->payment_method === 'stripe')
-                            Stripe
-                        @elseif ($participant->payment->payment_method === 'online')
-                            その他オンライン決済
-                        @else
-                            -
-                        @endif
-                    </p>
+                        {{ $participant->payment->payment_method === 'stripe' ? 'Stripe' : '-' }} </p>
 
                     <p>
                         決済状態：

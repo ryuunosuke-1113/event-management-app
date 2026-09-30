@@ -159,12 +159,16 @@
 
 
             <div class="form-group">
-                <label for="price">参加費（円）</label>
+                <label for="price">参加費</label>
 
-                <input type="number" id="price" name="price" min="0"
+                <input type="number" id="price" name="price" min="500" step="1"
                     value="{{ old('price', $event->price) }}" required>
-            </div>
 
+
+                @error('price')
+                    <div>{{ $message }}</div>
+                @enderror
+            </div>
 
             <div class="form-group">
                 <label for="status">状態</label>
@@ -195,13 +199,6 @@
             </div>
 
 
-
-
-            <div class="form-group">
-                <label for="cancel_policy">キャンセルポリシー</label>
-
-                <textarea id="cancel_policy" name="cancel_policy" rows="4">{{ old('cancel_policy', $event->cancel_policy) }}</textarea>
-            </div>
 
 
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">

@@ -34,9 +34,10 @@
                     ">
                     @if ($conversation->type === 'event')
                         <h2>
-                            {{ $conversation->event->title }}
+                            <a href="{{ route('events.show', $conversation->event) }}">
+                                {{ $conversation->event->title }}
+                            </a>
                         </h2>
-
                         <p>イベントチャット</p>
                     @elseif ($conversation->type === 'direct')
                         @php
@@ -44,9 +45,10 @@
                         @endphp
 
                         <h2>
-                            {{ $otherMember->user->name }} さん
+                            <a href="{{ route('profile.show', $otherMember->user) }}">
+                                {{ $otherMember->user->name }} さん
+                            </a>
                         </h2>
-
                         <p>ダイレクトチャット</p>
                     @endif
 

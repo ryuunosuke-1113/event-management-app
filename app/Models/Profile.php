@@ -11,6 +11,7 @@ class Profile extends Model
         'user_id',
         'photo_path',
         'bio',
+        'show_participation_history',
     ];
 
     public function user(): BelongsTo

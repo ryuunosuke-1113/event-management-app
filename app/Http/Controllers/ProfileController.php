@@ -33,7 +33,57 @@ class ProfileController extends Controller
 
         return view(
             'profile.show',
-            compact('user', 'canDirectChat')
+            compact(
+                'user',
+                'canDirectChat'
+            )
+        );
+    }
+    public function hostedEvents(\App\Models\User $user)
+    {
+        $events = \App\Models\Event::where(
+            'organizer_id',
+            $user->id
+        )
+            ->whereNotIn('status', [
+                'draft',
+                'cancelled',
+            ])
+            ->orderByDesc('event_date')
+            ->get();
+
+        return view(
+            'profile.hosted-events',
+            compact('user', 'events')
+        );
+    }
+
+    public function participatedEvents(\App\Models\User $user)
+    {
+        $user->load('profile');
+
+        $canShowParticipationHistory =
+            auth()->id() === $user->id
+            || ($user->profile?->show_participation_history ?? true);
+
+        if (!$canShowParticipationHistory) {
+            abort(403);
+        }
+
+        $events = \App\Models\Event::whereHas(
+            'participants',
+            function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->where('status', 'confirmed');
+            }
+        )
+            ->where('event_date', '<', now())
+            ->orderByDesc('event_date')
+            ->get();
+
+        return view(
+            'profile.participated-events',
+            compact('user', 'events')
         );
     }
     public function edit(Request $request)
@@ -55,6 +105,7 @@ class ProfileController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'bio' => ['nullable', 'string', 'max:1000'],
+            'show_participation_history' => ['nullable', 'boolean'],
         ]);
 
         $user->update([
@@ -73,6 +124,8 @@ class ProfileController extends Controller
             $profileData['photo_path'] = $request->file('photo')
                 ->store('profiles', 'public');
         }
+        $validated['show_participation_history'] =
+            $request->boolean('show_participation_history');
 
         $profile->update($profileData);
 

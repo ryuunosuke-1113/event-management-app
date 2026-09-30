@@ -12,48 +12,44 @@ use App\Models\EventImage;
 use Illuminate\Support\Facades\Gate;
 class EventController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $events = Event::with('images')
-            ->whereNull('archived_at')
-            ->orderBy('event_date')
-            ->get();
-        return view('admin.events.index', compact('events'));
-    }
-    public function archive(Event $event)
-    {
-        if (!in_array($event->status, ['finished', 'cancelled'], true)) {
-            return back()->with(
-                'error',
-                '開催終了または中止したイベントのみアーカイブできます。'
+        $query = Event::with([
+            'images',
+            'organizer',
+        ])
+            ->whereNotIn('status', [
+                'draft',
+                'cancelled',
+            ])
+            ->whereBetween('event_date', [
+                now()->subDays(10),
+                now(),
+            ]);
+
+        if ($request->filled('keyword')) {
+            $query->where(
+                'title',
+                'like',
+                '%' . $request->keyword . '%'
             );
         }
 
-        $event->update([
-            'archived_at' => now(),
-        ]);
+        if ($request->filled('event_date')) {
+            $query->whereDate(
+                'event_date',
+                $request->event_date
+            );
+        }
 
-        return redirect()
-            ->route('admin.events.index')
-            ->with('success', 'イベントをアーカイブしました。');
-    }
-    public function restoreArchive(Event $event)
-    {
-        $event->update([
-            'archived_at' => null,
-        ]);
-
-        return redirect()
-            ->route('admin.events.archived')
-            ->with('success', 'イベントのアーカイブを解除しました。');
-    }
-    public function archived()
-    {
-        $events = Event::whereNotNull('archived_at')
+        $events = $query
             ->orderByDesc('event_date')
             ->get();
 
-        return view('admin.events.archived', compact('events'));
+        return view(
+            'admin.events.index',
+            compact('events')
+        );
     }
     public function create()
     {
@@ -68,7 +64,7 @@ class EventController extends Controller
             'event_date' => ['required', 'date'],
             'place' => ['required', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1'],
-            'price' => ['required', 'integer', 'min:0'],
+            'price' => ['required', 'integer', 'min:500'],
             'status' => ['required', 'in:draft,published,closed,finished,cancelled'],
             'chat_url' => ['nullable', 'url'],
             'cancel_policy' => ['nullable', 'string'],
@@ -132,7 +128,7 @@ class EventController extends Controller
             'event_date' => ['required', 'date'],
             'place' => ['required', 'string', 'max:255'],
             'capacity' => ['required', 'integer', 'min:1'],
-            'price' => ['required', 'integer', 'min:0'],
+            'price' => ['required', 'integer', 'min:500'],
             'status' => ['required', 'in:draft,published,closed,finished,cancelled'],
             'chat_url' => ['nullable', 'url'],
             'cancel_policy' => ['nullable', 'string'],
@@ -196,6 +192,8 @@ class EventController extends Controller
                         try {
                             $stripe->refunds->create([
                                 'payment_intent' => $payment->stripe_payment_intent_id,
+                                'reverse_transfer' => true,
+                                'refund_application_fee' => true,
                             ]);
                         } catch (Throwable $e) {
                             report($e);
@@ -217,22 +215,6 @@ class EventController extends Controller
                         ]);
                     }
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | その他オンライン決済
-                    |--------------------------------------------------------------------------
-                    |
-                    | Stripeでは返金できないため、
-                    | 管理者による手動返金待ちにする。
-                    |--------------------------------------------------------------------------
-                    */ elseif ($payment->payment_method === 'online') {
-                        $payment->update([
-                            'refund_status' => 'pending',
-                            'refund_due_amount' => $payment->amount,
-                            'refunded_amount' => null,
-                            'refunded_at' => null,
-                        ]);
-                    }
 
                     $participant->update([
                         'status' => 'cancelled',
