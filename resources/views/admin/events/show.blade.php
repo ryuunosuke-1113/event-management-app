@@ -65,17 +65,6 @@
                 編集する
             </x-link-button>
 
-            @if (is_null($event->archived_at) && in_array($event->status, ['finished', 'cancelled'], true))
-                <form method="POST" action="{{ route('admin.events.archive', $event) }}"
-                    onsubmit="return confirm('このイベントをアーカイブしますか？')" style="display: flex; margin: 0;">
-                    @csrf
-                    @method('PATCH')
-
-                    <x-button type="submit" variant="secondary" style="height: 100%;">
-                        イベントをアーカイブする
-                    </x-button>
-                </form>
-            @endif
 
             <x-link-button href="{{ route('admin.events.index') }}" variant="secondary"
                 style="display: inline-flex; align-items: center;">
@@ -227,32 +216,7 @@
                                 </td>
 
                                 <td>
-                                    @if ($participant->status === 'pending_payment')
-                                        <form method="POST"
-                                            action="{{ route('admin.event-participants.confirm-online-payment', $participant) }}">
-                                            @csrf
-
-                                            <x-button type="submit" variant="primary">
-                                                オンライン決済済みとして確定
-                                            </x-button>
-                                        </form>
-                                    @elseif (
-                                        $participant->payment &&
-                                            $participant->payment->payment_method === 'online' &&
-                                            $participant->payment->refund_status === 'pending')
-                                        <form method="POST"
-                                            action="{{ route('admin.event-participants.refund-complete', $participant) }}"
-                                            onsubmit="return confirm('実際の返金対応は完了していますか？')">
-                                            @csrf
-                                            @method('PATCH')
-
-                                            <x-button type="submit" variant="primary">
-                                                返金済みにする
-                                            </x-button>
-                                        </form>
-                                    @else
-                                        -
-                                    @endif
+                                    -
                                 </td>
                             </tr>
                         @endforeach

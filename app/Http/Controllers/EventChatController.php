@@ -16,6 +16,9 @@ class EventChatController extends Controller
         $conversation = $event->conversations()
             ->where('type', 'event')
             ->firstOrFail();
+        if ($conversation->is_closed) {
+            abort(403);
+        }
 
         $isMember = $conversation->members()
             ->where('user_id', $request->user()->id)
@@ -60,6 +63,10 @@ class EventChatController extends Controller
             ->where('type', 'event')
             ->firstOrFail();
 
+        if ($conversation->is_closed) {
+            abort(403);
+        }
+
         $isMember = $conversation->members()
             ->where('user_id', $request->user()->id)
             ->exists();
@@ -67,7 +74,6 @@ class EventChatController extends Controller
         if (!$isMember) {
             abort(403);
         }
-
         $validated = $request->validate([
             'body' => ['nullable', 'string', 'max:5000'],
             'image' => [

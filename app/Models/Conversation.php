@@ -12,10 +12,15 @@ class Conversation extends Model
         'event_id',
         'type',
         'archived_at',
+        'is_closed',
+        'closed_at',
+        'closed_reason',
     ];
 
     protected $casts = [
         'archived_at' => 'datetime',
+        'is_closed' => 'boolean',
+        'closed_at' => 'datetime',
     ];
 
     public function event(): BelongsTo

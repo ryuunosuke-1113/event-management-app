@@ -53,7 +53,7 @@
             <div class="form-group">
                 <label for="price">参加費（円）</label>
 
-                <input type="number" id="price" name="price" min="0" value="{{ old('price', 0) }}" required>
+                <input type="number" id="price" name="price" min="500" value="{{ old('price', 0) }}" required>
             </div>
 
             <div class="form-group">

@@ -31,6 +31,17 @@
                 <strong>申込状況：</strong>
                 {{ $occupiedCount }} / {{ $event->capacity }}人
             </p>
+
+            <div style="margin-top: 16px;">
+                <p>
+                    <strong>主催者：</strong>
+                    {{ $event->organizer->name }}
+                </p>
+
+                <x-link-button href="{{ route('profile.show', $event->organizer) }}" variant="secondary">
+                    主催者プロフィールを見る
+                </x-link-button>
+            </div>
         </div>
 
         <div style="margin-top: 24px;">
@@ -39,16 +50,35 @@
             <p style="white-space: pre-wrap;">{{ $event->description }}</p>
         </div>
 
-        @if ($event->cancel_policy)
-            <div style="margin-top: 24px;">
-                <h2>キャンセルポリシー</h2>
+        <div style="margin-top: 24px;">
+            <h2>キャンセルポリシー</h2>
 
-                <p style="white-space: pre-wrap;">
-                    {{ $event->cancel_policy }}
-                </p>
-            </div>
-        @endif
+            <p>
+                開催日の3日前まで：
+                参加費の
+                {{ config('event.cancel_policy.participant.three_days_before') }}%
+                を返金
+            </p>
 
+            <p>
+                開催日の2日前から前日まで：
+                参加費の
+                {{ config('event.cancel_policy.participant.two_days_to_day_before') }}%
+                を返金
+            </p>
+
+            <p>
+                開催当日：
+                返金なし
+            </p>
+
+            <p>
+                主催者都合によるイベント中止：
+                参加費の
+                {{ config('event.cancel_policy.organizer_cancelled') }}%
+                を返金
+            </p>
+        </div>
         <div style="margin-top: 32px;">
 
             @if ($isFull)
@@ -56,13 +86,23 @@
                     <strong>このイベントは現在満員です。</strong>
                 </p>
             @elseif (auth()->check())
-                <form method="POST" action="{{ route('event-participants.store', $event) }}">
-                    @csrf
+                @if (auth()->user()->account_status === 'full_suspended')
+                    <p style="color: #dc3545; font-weight: bold;">
+                        現在、運営によりイベントへの参加が制限されています。
+                    </p>
 
-                    <x-button type="submit" variant="primary">
-                        このイベントに参加申し込み
-                    </x-button>
-                </form>
+                    <x-link-button href="{{ route('moderation.status') }}" variant="secondary">
+                        制限内容を確認する
+                    </x-link-button>
+                @else
+                    <form method="POST" action="{{ route('event-participants.store', $event) }}">
+                        @csrf
+
+                        <x-button type="submit" variant="primary">
+                            このイベントに参加申し込み
+                        </x-button>
+                    </form>
+                @endif
             @else
                 <p>
                     参加申し込みにはログインが必要です。
@@ -72,7 +112,6 @@
                     ログイン
                 </x-link-button>
             @endif
-
         </div>
 
         @auth

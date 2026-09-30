@@ -38,5 +38,33 @@
                 </form>
             @endif
         @endauth
-    </div>
-@endsection
+        @if (auth()->check() && auth()->id() !== $user->id)
+            <x-link-button href="{{ route('reports.create', $user) }}" variant="danger">
+                このユーザーを通報する
+            </x-link-button>
+        @endif
+        <hr style="margin: 32px 0;">
+
+        <div style="
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+">
+            <x-link-button href="{{ route('profile.hosted-events', $user) }}">
+                主催したイベントを見る
+            </x-link-button>
+
+            @if (auth()->id() === $user->id || ($user->profile?->show_participation_history ?? true))
+                <x-link-button href="{{ route('profile.participated-events', $user) }}">
+                    過去に参加したイベントを見る
+                </x-link-button>
+            @endif
+        </div>
+        @if (auth()->check() && auth()->user()->is_admin && !$user->is_admin)
+            <div style="margin-top: 24px;">
+                <x-link-button href="{{ route('admin.users.moderation.edit', $user) }}" variant="danger">
+                    アカウント制御
+                </x-link-button>
+            </div>
+        @endif
+    @endsection

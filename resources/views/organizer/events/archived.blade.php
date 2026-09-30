@@ -7,7 +7,7 @@
     <h1>アーカイブイベント一覧</h1>
 
     <div style="margin-bottom: 24px;">
-        <x-link-button href="{{ route('admin.events.index') }}" variant="secondary">
+        <x-link-button href="{{ route('organizer.events.index') }}" variant="secondary">
             イベント管理へ戻る
         </x-link-button>
     </div>
@@ -41,10 +41,10 @@
                     {{ $event->archived_at->format('Y/m/d H:i') }}
                 </p>
 
-                <x-link-button href="{{ route('admin.events.show', $event) }}" variant="primary">
+                <x-link-button href="{{ route('organizer.events.show', $event) }}" variant="primary">
                     詳細を見る
                 </x-link-button>
-                <form method="POST" action="{{ route('admin.events.restore-archive', $event) }}"
+                <form method="POST" action="{{ route('organizer.events.restore-archive', $event) }}"
                     onsubmit="return confirm('このイベントのアーカイブを解除しますか？')" style="margin-top: 12px;">
                     @csrf
                     @method('PATCH')

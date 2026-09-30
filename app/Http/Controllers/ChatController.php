@@ -12,6 +12,9 @@ class ChatController extends Controller
         $memberships = $request->user()
             ->conversationMemberships()
             ->whereNull('archived_at')
+            ->whereHas('conversation', function ($query) {
+                $query->where('is_closed', false);
+            })
             ->with([
                 'conversation.event',
                 'conversation.members.user.profile',

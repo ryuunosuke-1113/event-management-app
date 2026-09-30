@@ -302,6 +302,21 @@
             color: #082f49;
         }
 
+        .report-alert {
+            background-color: #dc3545;
+            color: white !important;
+            padding: 8px 12px;
+            border-radius: 6px;
+        }
+
+        .admin-notice-alert {
+            background-color: #f0ad4e;
+            color: #fff !important;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: bold;
+        }
+
 
         @media (max-width: 700px) {
             .hero-card {
@@ -329,6 +344,7 @@
                 max-width: 100%;
                 height: 200px;
             }
+
         }
     </style>
 </head>
@@ -374,8 +390,53 @@
                 ☰ メニュー
             </x-button>
         </div>
+        @if (Auth::check())
+            @php
+                $activeWarningCount = 0;
+
+                if (auth()->check()) {
+                    $activeWarningCount = auth()->user()->activeWarnings()->count();
+                }
+            @endphp
+        @endif
 
         <div id="navigation-area">
+            @auth
+                @php
+                    $myReportUnreadCount = \App\Models\ReportMessage::query()
+                        ->whereNull('read_at')
+                        ->where('user_id', '!=', auth()->id())
+                        ->whereHas('report', function ($query) {
+                            $query->where('reporter_id', auth()->id());
+                        })
+                        ->count();
+
+                    $adminNoticeUnreadCount = auth()->user()->adminNotices()->whereNull('read_at')->count();
+
+                    $adminReportUnreadCount = 0;
+                    $openReportCount = 0;
+                    $unreadFeedbackCount = 0;
+                    $maintenanceActive = false;
+
+                    if (auth()->user()->is_admin) {
+                        $adminReportUnreadCount = \App\Models\ReportMessage::query()
+                            ->whereNull('read_at')
+                            ->where('user_id', '!=', auth()->id())
+                            ->count();
+
+                        $openReportCount = \App\Models\UserReport::query()->where('status', 'open')->count();
+
+                        $unreadFeedbackCount = \App\Models\Feedback::query()->whereNull('read_at')->count();
+
+                        $maintenanceSetting = \App\Models\MaintenanceSetting::first();
+
+                        $maintenanceActive = $maintenanceSetting?->is_active ?? false;
+                    }
+                @endphp
+            @endauth
+
+
+            {{-- 基本メニュー --}}
             <nav>
                 <a href="{{ route('events.index') }}" class="{{ request()->routeIs('events.*') ? 'active' : '' }}">
                     イベント一覧
@@ -391,15 +452,18 @@
                         チャット一覧
                     </a>
 
-                    @if (Auth::user()->is_admin)
-                        <a href="{{ route('admin.events.index') }}"
-                            class="{{ request()->routeIs('admin.events.*') ? 'active' : '' }}">
-                            イベント管理
-                        </a>
-                    @endif
+                    <a href="{{ route('organizer.events.index') }}"
+                        class="{{ request()->routeIs('organizer.events.*') ? 'active' : '' }}">
+                        イベント管理
+                    </a>
 
-                    <a href="{{ route('account.edit') }}" class="{{ request()->routeIs('account.*') ? 'active' : '' }}">
-                        アカウント設定
+                    <a href="{{ route('admin-notices.index') }}"
+                        class="{{ $adminNoticeUnreadCount > 0 ? 'admin-notice-alert' : '' }}">
+                        運営からのメッセージ
+
+                        @if ($adminNoticeUnreadCount > 0)
+                            （{{ $adminNoticeUnreadCount }}）
+                        @endif
                     </a>
 
                     <form method="POST" action="{{ route('logout') }}" style="display: inline;">
@@ -409,6 +473,10 @@
                             ログアウト
                         </button>
                     </form>
+
+                    <button type="button" id="extra-navigation-toggle">
+                        その他 ▼
+                    </button>
                 @else
                     <a href="{{ route('login') }}">
                         ログイン
@@ -419,6 +487,69 @@
                     </a>
                 @endauth
             </nav>
+
+
+            {{-- その他のメニュー --}}
+            @auth
+                <nav id="extra-navigation" style="display: none; margin-top: 8px;">
+                    @if (auth()->user()->is_admin)
+                        <a href="{{ route('admin.events.index') }}">
+                            過去のイベント閲覧
+                        </a>
+                    @endif
+
+                    <a href="{{ route('reports.index') }}">
+                        自分の通報
+
+                        @if ($myReportUnreadCount > 0)
+                            （{{ $myReportUnreadCount }}）
+                        @endif
+                    </a>
+
+                    @if (auth()->user()->is_admin)
+                        <a
+                            href="{{ route('admin.maintenance.edit', [
+                                'from' => url()->current(),
+                            ]) }}">
+                            メンテナンス
+                            {{ $maintenanceActive ? 'ON' : 'OFF' }}
+                        </a>
+
+                        <a href="{{ route('admin.reports.index') }}"
+                            class="{{ $openReportCount > 0 ? 'report-alert' : '' }}">
+                            通報管理
+
+                            @if ($openReportCount > 0)
+                                （未対応 {{ $openReportCount }}）
+                            @elseif ($adminReportUnreadCount > 0)
+                                （{{ $adminReportUnreadCount }}）
+                            @endif
+                        </a>
+
+                        <a href="{{ route('admin.moderation.index') }}">
+                            制御管理
+                        </a>
+                    @endif
+
+                    <a href="{{ route('account.edit') }}" class="{{ request()->routeIs('account.*') ? 'active' : '' }}">
+                        アカウント設定
+                    </a>
+
+                    <a href="{{ route('feedback.create') }}">
+                        フィードバック
+                    </a>
+
+                    @if (auth()->user()->is_admin)
+                        <a href="{{ route('admin.feedbacks.index') }}">
+                            フィードバック確認
+
+                            @if ($unreadFeedbackCount > 0)
+                                （{{ $unreadFeedbackCount }}）
+                            @endif
+                        </a>
+                    @endif
+                </nav>
+            @endauth
         </div>
     </header>
     <main id="main-content">
@@ -512,6 +643,30 @@
             });
 
             window.addEventListener('resize', updateMainPadding);
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButton =
+                document.getElementById('extra-navigation-toggle');
+
+            const extraNavigation =
+                document.getElementById('extra-navigation');
+
+            if (!toggleButton || !extraNavigation) {
+                return;
+            }
+
+            toggleButton.addEventListener('click', function() {
+                const isOpen =
+                    extraNavigation.style.display !== 'none';
+
+                extraNavigation.style.display =
+                    isOpen ? 'none' : '';
+
+                toggleButton.textContent =
+                    isOpen ? 'その他 ▼' : 'その他 ▲';
+            });
         });
     </script>
 </body>

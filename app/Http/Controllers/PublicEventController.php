@@ -3,18 +3,36 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use Illuminate\Http\Request;
 
 class PublicEventController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $events = Event::with('images')
-            ->where('status', 'published')
+        $query = Event::with('images')
+            ->where('status', 'published');
+
+        if ($request->filled('keyword')) {
+            $query->where(
+                'title',
+                'like',
+                '%' . $request->keyword . '%'
+            );
+        }
+
+        if ($request->filled('event_date')) {
+            $query->whereDate(
+                'event_date',
+                $request->event_date
+            );
+        }
+
+        $events = $query
             ->orderBy('event_date')
             ->get();
+
         return view('events.index', compact('events'));
     }
-
     public function show(Event $event)
     {
         $canView = $event->status === 'published';

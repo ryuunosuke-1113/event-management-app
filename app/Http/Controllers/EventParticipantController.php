@@ -75,6 +75,14 @@ class EventParticipantController extends Controller
     }
     public function store(Request $request, Event $event)
     {
+        $user = $request->user();
+
+        if ($user->account_status === 'full_suspended') {
+            return back()->with(
+                'error',
+                '現在、運営によりイベントへの参加が制限されています。'
+            );
+        }
         if ($event->status !== 'published') {
             abort(404);
         }
@@ -103,6 +111,7 @@ class EventParticipantController extends Controller
                 if ($participant->payment) {
                     $participant->payment->update([
                         'amount' => $event->price,
+                        'payment_method' => 'stripe',
                         'status' => 'pending',
                         'stripe_checkout_session_id' => null,
                         'stripe_payment_intent_id' => null,
@@ -112,6 +121,7 @@ class EventParticipantController extends Controller
                 } else {
                     $participant->payment()->create([
                         'amount' => $event->price,
+                        'payment_method' => 'stripe',
                         'status' => 'pending',
                     ]);
                 }
@@ -133,9 +143,9 @@ class EventParticipantController extends Controller
         ]);
         $participant->payment()->create([
             'amount' => $event->price,
+            'payment_method' => 'stripe',
             'status' => 'pending',
         ]);
-
         return redirect()
             ->route('events.show', $event)
             ->with('success', '参加申し込みを受け付けました。');
@@ -238,8 +248,9 @@ class EventParticipantController extends Controller
                 $stripe->refunds->create([
                     'payment_intent' => $payment->stripe_payment_intent_id,
                     'amount' => $refundAmount,
+                    'reverse_transfer' => true,
+                    'refund_application_fee' => true,
                 ]);
-
                 $payment->update([
                     'status' => 'refunded',
                     'refund_status' => 'completed',
@@ -249,22 +260,6 @@ class EventParticipantController extends Controller
                 ]);
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | その他オンライン決済
-            |--------------------------------------------------------------------------
-            |
-            | 自動返金はできないため、
-            | 管理者が返金するまで「返金待ち」とする。
-            |--------------------------------------------------------------------------
-            */ elseif ($payment->payment_method === 'online') {
-                $payment->update([
-                    'refund_status' => 'pending',
-                    'refund_due_amount' => $refundAmount,
-                    'refunded_amount' => null,
-                    'refunded_at' => null,
-                ]);
-            }
         }
         $eventParticipant->update([
             'status' => 'cancelled',

@@ -15,7 +15,7 @@ use App\Notifications\ResetPasswordNotification;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Notifications\VerifyEmailNotification;
 
-#[Fillable(['name', 'email', 'password'])]
+#[Fillable(['name', 'email', 'password', 'stripe_account_id', 'account_status',])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -58,5 +58,19 @@ class User extends Authenticatable implements MustVerifyEmail
     public function sendEmailVerificationNotification(): void
     {
         $this->notify(new VerifyEmailNotification());
+    }
+    public function moderationActions(): HasMany
+    {
+        return $this->hasMany(UserModerationAction::class);
+    }
+    public function activeWarnings(): HasMany
+    {
+        return $this->hasMany(UserModerationAction::class)
+            ->where('action_type', 'warning')
+            ->where('is_active', true);
+    }
+    public function adminNotices(): HasMany
+    {
+        return $this->hasMany(AdminNotice::class);
     }
 }

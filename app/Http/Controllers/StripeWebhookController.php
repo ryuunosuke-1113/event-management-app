@@ -103,12 +103,17 @@ class StripeWebhookController extends Controller
                 $stripe->refunds->create(
                     [
                         'payment_intent' => $session->payment_intent,
+
+                        // 主催者のConnected Accountへ送った売上を戻す
+                        'reverse_transfer' => true,
+
+                        // プラットフォームが受け取った手数料も返す
+                        'refund_application_fee' => true,
                     ],
                     [
                         'idempotency_key' => 'capacity-refund-' . $payment->id,
                     ]
                 );
-
                 $payment->update([
                     'stripe_payment_intent_id' => $session->payment_intent,
                     'status' => 'refunded',
@@ -124,10 +129,10 @@ class StripeWebhookController extends Controller
                 ]);
             });
         }        /*
-         |--------------------------------------------------------------------------
-         | Checkout期限切れ
-         |--------------------------------------------------------------------------
-         */
+       |--------------------------------------------------------------------------
+       | Checkout期限切れ
+       |--------------------------------------------------------------------------
+       */
 
         if ($event->type === 'checkout.session.expired') {
             $session = $event->data->object;

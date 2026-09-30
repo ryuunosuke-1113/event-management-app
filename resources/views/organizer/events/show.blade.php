@@ -1,0 +1,253 @@
+@extends('layouts.app')
+
+@section('title', $event->title)
+
+@section('content')
+
+    <h1>イベント詳細</h1>
+
+    <div class="card">
+
+        <h2>{{ $event->title }}</h2>
+
+        @if ($event->images->isNotEmpty())
+            <div class="event-image-grid">
+                @foreach ($event->images as $image)
+                    <img src="{{ asset('storage/' . $image->image_path) }}" alt="{{ $event->title }}の画像">
+                @endforeach
+            </div>
+        @endif
+
+        <p>
+            状態：
+            <x-status-badge :status="$event->status" :label="$event->status_label" />
+        </p>
+
+        <p>
+            開催日時：
+            {{ $event->event_date->format('Y/m/d H:i') }}
+        </p>
+
+        <p>
+            開催場所：
+            {{ $event->place }}
+        </p>
+
+        <p>
+            定員：
+            {{ $event->capacity }}人
+        </p>
+
+        <p>
+            参加費：
+            {{ number_format($event->price) }}円
+        </p>
+
+        <p>
+            {{ $event->description }}
+        </p>
+
+        @if ($event->cancel_policy)
+            <h3>キャンセルポリシー</h3>
+            <p>{{ $event->cancel_policy }}</p>
+        @endif
+
+        <div
+            style="
+        display: flex;
+        align-items: stretch;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    ">
+            <x-link-button href="{{ route('organizer.events.edit', $event) }}" variant="primary"
+                style="display: inline-flex; align-items: center;">
+                編集する
+            </x-link-button>
+
+            @if (is_null($event->archived_at) && in_array($event->status, ['finished', 'cancelled'], true))
+                <form method="POST" action="{{ route('organizer.events.archive', $event) }}"
+                    onsubmit="return confirm('このイベントをアーカイブしますか？')" style="display: flex; margin: 0;">
+                    @csrf
+                    @method('PATCH')
+
+                    <x-button type="submit" variant="secondary" style="height: 100%;">
+                        イベントをアーカイブする
+                    </x-button>
+                </form>
+            @endif
+
+            <x-link-button href="{{ route('organizer.events.index') }}" variant="secondary"
+                style="display: inline-flex; align-items: center;">
+                イベント管理へ戻る
+            </x-link-button>
+        </div>
+    </div>
+
+    <div class="card">
+
+        <h2>参加状況</h2>
+
+        <p>
+            参加確定：
+            {{ $event->participants->where('status', 'confirmed')->count() }}
+            / {{ $event->capacity }}人
+        </p>
+
+        <p>
+            決済待ち：
+            {{ $event->participants->where('status', 'pending_payment')->count() }}人
+        </p>
+
+        <p>
+            キャンセル済み：
+            {{ $event->participants->where('status', 'cancelled')->count() }}人
+        </p>
+
+    </div>
+
+    <div class="card">
+
+        <h2>参加者一覧</h2>
+
+        @if ($event->participants->isEmpty())
+
+            <p>まだ参加者はいません。</p>
+        @else
+            <div style="overflow-x: auto;">
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>名前</th>
+                            <th>参加状態</th>
+                            <th>決済状態</th>
+                            <th>返金状態</th>
+                            <th>申込日時</th>
+                            <th>支払い期限</th>
+                            <th>当日参加確認</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        @foreach ($event->participants as $participant)
+                            <tr>
+                                <td>{{ $participant->user_id }}</td>
+
+                                <td>
+                                    {{ $participant->user->name }}
+                                </td>
+
+                                <td>
+                                    <x-status-badge :status="$participant->status" :label="$participant->status_label" />
+                                </td>
+
+                                <td>
+                                    @if ($participant->payment)
+                                        <x-status-badge :status="$participant->payment->status" :label="$participant->payment->display_status_label" />
+                                    @else
+                                        <x-status-badge status="none" label="決済情報なし" />
+                                    @endif
+                                </td>
+
+                                {{-- 返金状態 --}}
+                                <td>
+                                    @if (!$participant->payment)
+                                        -
+                                    @elseif ($participant->payment->refund_status === 'pending')
+                                        <div>
+                                            <strong>返金待ち</strong>
+                                        </div>
+
+                                        <div style="margin-top: 4px;">
+                                            {{ number_format($participant->payment->refund_due_amount ?? 0) }}円
+                                        </div>
+                                    @elseif ($participant->payment->refund_status === 'completed')
+                                        <div>
+                                            <strong>返金済み</strong>
+                                        </div>
+
+                                        <div style="margin-top: 4px;">
+                                            {{ number_format($participant->payment->refunded_amount ?? 0) }}円
+                                        </div>
+
+                                        @if ($participant->payment->refunded_at)
+                                            <div style="margin-top: 4px; font-size: 12px;">
+                                                {{ $participant->payment->refunded_at->format('Y/m/d H:i') }}
+                                            </div>
+                                        @endif
+                                    @elseif ($participant->payment->refund_status === 'not_required')
+                                        返金不要
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+
+                                <td>
+                                    {{ $participant->created_at->format('Y/m/d H:i') }}
+                                </td>
+
+                                <td>
+                                    @if ($participant->status === 'pending_payment' && $participant->payment_expires_at)
+                                        {{ $participant->payment_expires_at->format('Y/m/d H:i') }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+
+                                <td>
+                                    @if ($participant->status === 'confirmed')
+                                        <form method="POST"
+                                            action="{{ route('organizer.event-participants.attendance', $participant) }}">
+                                            @csrf
+                                            @method('PATCH')
+
+                                            <input type="hidden" name="attended"
+                                                value="{{ $participant->attended_at ? 0 : 1 }}">
+
+                                            @if ($participant->attended_at)
+                                                <button type="submit">
+                                                    ✓ 参加確認済み
+                                                </button>
+
+                                                <div style="margin-top: 4px; font-size: 12px;">
+                                                    {{ $participant->attended_at->format('Y/m/d H:i') }}
+                                                </div>
+                                            @else
+                                                <button type="submit">
+                                                    参加確認
+                                                </button>
+                                            @endif
+                                        </form>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+
+                                <td>
+                                    -
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+        @endif
+
+    </div>
+
+    @if ($event->status === 'draft' && !$event->participants()->exists())
+        <form method="POST" action="{{ route('organizer.events.destroy', $event) }}"
+            onsubmit="return confirm('本当にこのイベントを削除しますか？')">
+            @csrf
+            @method('DELETE')
+
+            <x-button type="submit" variant="danger">
+                イベントを削除する
+            </x-button>
+        </form>
+    @endif
+@endsection
