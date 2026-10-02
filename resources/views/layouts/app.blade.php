@@ -550,6 +550,29 @@
                     @endif
                 </nav>
             @endauth
+
+            <x-button type="button" id="legal-navigation-toggle">
+                利用規約等 ▼
+            </x-button>
+
+            <nav id="legal-navigation" style="display: none; margin-top: 8px;">
+                <a href="{{ route('terms') }}">
+                    利用規約
+                </a>
+
+                <a href="{{ route('privacy') }}">
+                    プライバシーポリシー
+                </a>
+
+                <a href="{{ route('commercial-transactions') }}">
+                    特定商取引法に基づく表記
+                </a>
+
+                <a href="{{ route('contact') }}">
+                    お問い合わせ
+                </a>
+            </nav>
+
         </div>
     </header>
     <main id="main-content">
@@ -666,6 +689,30 @@
 
                 toggleButton.textContent =
                     isOpen ? 'その他 ▼' : 'その他 ▲';
+            });
+        });
+    </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleButton =
+                document.getElementById('legal-navigation-toggle');
+
+            const legalNavigation =
+                document.getElementById('legal-navigation');
+
+            if (!toggleButton || !legalNavigation) {
+                return;
+            }
+
+            toggleButton.addEventListener('click', function() {
+                const isOpen =
+                    legalNavigation.style.display !== 'none';
+
+                legalNavigation.style.display =
+                    isOpen ? 'none' : '';
+
+                toggleButton.textContent =
+                    isOpen ? '利用規約等 ▼' : '利用規約等 ▲';
             });
         });
     </script>
