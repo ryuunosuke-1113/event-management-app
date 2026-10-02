@@ -72,6 +72,25 @@ Route::get(
     '/profiles/{user}/participated-events',
     [ProfileController::class, 'participatedEvents']
 )->name('profile.participated-events');
+Route::view(
+    '/terms',
+    'legal.terms'
+)->name('terms');
+
+Route::view(
+    '/privacy',
+    'legal.privacy'
+)->name('privacy');
+
+Route::view(
+    '/commercial-transactions',
+    'legal.commercial-transactions'
+)->name('commercial-transactions');
+
+Route::view(
+    '/contact',
+    'legal.contact'
+)->name('contact');
 
 
 
