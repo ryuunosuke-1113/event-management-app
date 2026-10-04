@@ -42,6 +42,11 @@
             </x-button>
         </form>
 
+        <label>
+            <input type="checkbox" name="remember" value="1">
+            ログイン状態を保持する
+        </label>
+
         <p>
             アカウントをお持ちでない方は
             <a href="{{ route('register') }}">

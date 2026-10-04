@@ -20,7 +20,9 @@ class LoginController extends Controller
             'password' => ['required'],
         ]);
 
-        if (!Auth::attempt($credentials)) {
+        $remember = $request->boolean('remember');
+
+        if (!Auth::attempt($credentials, $remember)) {
             return back()
                 ->withErrors([
                     'email' => 'メールアドレスまたはパスワードが正しくありません。',
