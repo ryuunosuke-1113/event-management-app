@@ -83,5 +83,19 @@ Route::get('/events/{event}', function (Event $event) {
                 'name' => $event->organizer->name,
             ]
             : null,
+        'cancel_policy' => [
+            'three_days_before' => (int) config(
+                'event.cancel_policy.participant.three_days_before'
+            ),
+            'two_days_to_day_before' => (int) config(
+                'event.cancel_policy.participant.two_days_to_day_before'
+            ),
+            'event_day' => (int) config(
+                'event.cancel_policy.participant.event_day'
+            ),
+            'organizer_cancelled' => (int) config(
+                'event.cancel_policy.organizer_cancelled'
+            ),
+        ],
     ]);
 })->whereNumber('event');
