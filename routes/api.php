@@ -46,7 +46,16 @@ Route::get('/events', function (Request $request) {
 Route::get('/events/{event}', function (Event $event) {
     abort_unless($event->status === 'published', 404);
 
-    $event->load('organizer:id,name');
+    $event->load([
+        'organizer:id,name',
+        'images',
+    ]);
+
+    $occupiedCount = $event->participants()
+        ->where('status', 'confirmed')
+        ->count();
+
+    $isFull = $occupiedCount >= $event->capacity;
 
     return response()->json([
         'id' => $event->id,
@@ -55,7 +64,19 @@ Route::get('/events/{event}', function (Event $event) {
         'place' => $event->place,
         'price' => $event->price,
         'capacity' => $event->capacity,
+        'occupied_count' => $occupiedCount,
+        'is_full' => $isFull,
         'description' => $event->description,
+
+        'images' => $event->images
+            ->map(function ($image) {
+                return [
+                    'id' => $image->id,
+                    'url' => asset('storage/' . $image->image_path),
+                ];
+            })
+            ->values(),
+
         'organizer' => $event->organizer
             ? [
                 'id' => $event->organizer->id,
