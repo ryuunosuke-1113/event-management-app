@@ -3,6 +3,33 @@
 use App\Models\Event;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+
+Route::post('/login', function (Request $request) {
+    $validated = $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required', 'string'],
+    ]);
+
+    $user = \App\Models\User::where('email', $validated['email'])->first();
+
+    if (!$user || !Hash::check($validated['password'], $user->password)) {
+        return response()->json([
+            'message' => 'メールアドレスまたはパスワードが正しくありません。',
+        ], 422);
+    }
+
+    $token = $user->createToken('mobile-app')->plainTextToken;
+
+    return response()->json([
+        'token' => $token,
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+        ],
+    ]);
+});
 
 Route::get('/events', function (Request $request) {
     $query = Event::query()
@@ -99,3 +126,17 @@ Route::get('/events/{event}', function (Event $event) {
         ],
     ]);
 })->whereNumber('event');
+Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+    return response()->json([
+        'id' => $request->user()->id,
+        'name' => $request->user()->name,
+        'email' => $request->user()->email,
+    ]);
+});
+Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
+    $request->user()->currentAccessToken()->delete();
+
+    return response()->json([
+        'message' => 'ログアウトしました。',
+    ]);
+});
