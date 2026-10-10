@@ -44,20 +44,39 @@
         @endif
     </form>
 
-    <div
+    <div id="install-app-guide"
         style="
+        display: none;
         margin: 16px 0 24px;
-        padding: 12px 16px;
+        padding: 16px;
         background: #e0f2fe;
         color: #0c4a6e;
         border-radius: 8px;
         font-size: 14px;
         line-height: 1.7;
     ">
-        📌 このサイトをブックマークしておくと、
-        次回からすぐアクセスできます。
-    </div>
+        <strong>📱 このサイトをアプリのように使えます</strong>
 
+        <p style="margin: 8px 0;">
+            ホーム画面に追加すると、次回からアイコンをタップするだけで開けます。
+        </p>
+
+        <button type="button" id="install-app-button" style="display: none;">
+            ホーム画面に追加
+        </button>
+
+        <button type="button" id="show-ios-install-guide" style="display: none;">
+            iPhone / iPadでの追加方法
+        </button>
+
+        <div id="ios-install-guide" style="
+            display: none;
+            margin-top: 12px;
+        ">
+            Safariの「共有」ボタンを押して、
+            「ホーム画面に追加」を選んでください。
+        </div>
+    </div>
 
 
     @if ($events->isEmpty())
