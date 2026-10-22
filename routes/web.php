@@ -31,6 +31,9 @@ use App\Http\Controllers\ModerationStatusController;
 use App\Http\Controllers\AdminNoticeController;
 use App\Http\Controllers\ModerationMessageController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\OrganizerPayoutController;
+use App\Http\Controllers\AdminWithdrawalRequestController;
+use App\Http\Controllers\OrganizerBankAccountController;
 
 
 
@@ -389,6 +392,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 '/event-guidelines',
                 'organizer.events.guidelines'
             )->name('events.guidelines');
+            Route::get('/payouts', [OrganizerPayoutController::class, 'index'])
+                ->name('payouts.index');
+            Route::post('/payouts/withdraw', [OrganizerPayoutController::class, 'store'])
+                ->name('payouts.store');
+            Route::get('/bank-account', [OrganizerBankAccountController::class, 'edit'])
+                ->name('bank-account.edit');
+
+            Route::put('/bank-account', [OrganizerBankAccountController::class, 'update'])
+                ->name('bank-account.update');
+            Route::delete('/bank-account', [OrganizerBankAccountController::class, 'destroy'])
+                ->name('bank-account.destroy');
         });
     // ユーザー通報
     Route::get(
@@ -539,5 +553,16 @@ Route::middleware(['auth', 'admin'])
             '/feedbacks/{feedback}',
             [\App\Http\Controllers\Admin\FeedbackController::class, 'show']
         )->name('feedbacks.show');
+        // 出金申請の管理
+        Route::get('/withdrawal-requests', [AdminWithdrawalRequestController::class, 'index'])
+            ->name('withdrawal-requests.index');
+        Route::patch('/withdrawal-requests/{withdrawalRequest}/approve', [AdminWithdrawalRequestController::class, 'approve'])
+            ->name('withdrawal-requests.approve');
+        Route::patch('/withdrawal-requests/{withdrawalRequest}/paid', [AdminWithdrawalRequestController::class, 'markAsPaid'])
+            ->name('withdrawal-requests.paid');
+        Route::patch(
+            '/withdrawal-requests/{withdrawalRequest}/reject',
+            [AdminWithdrawalRequestController::class, 'reject']
+        )->name('withdrawal-requests.reject');
 
     });
