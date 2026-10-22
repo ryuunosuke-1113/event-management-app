@@ -74,4 +74,9 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(AdminNotice::class);
     }
+
+    public function organizerBankAccount(): HasOne
+    {
+        return $this->hasOne(OrganizerBankAccount::class);
+    }
 }
